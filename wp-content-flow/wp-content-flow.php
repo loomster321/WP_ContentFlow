@@ -145,13 +145,13 @@ class WP_Content_Flow {
         require_once WP_CONTENT_FLOW_PLUGIN_DIR . 'includes/class-ai-core.php';
         WP_Content_Flow_AI_Core::init();
         
-        // Initialize REST API
-        new WP_Content_Flow_REST_API();
+        // Initialize core components
+        WP_Content_Flow_Workflow_Engine::get_instance();
+        WP_Content_Flow_Content_Manager::get_instance();
         
         // Initialize admin components
         if ( is_admin() ) {
-            new WP_Content_Flow_Admin_Menu();
-            new WP_Content_Flow_Settings_Page();
+            WP_Content_Flow_Admin_Menu::get_instance();
         }
         
         // Initialize block editor components

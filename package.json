@@ -42,14 +42,14 @@
     "lint:fix": "npm run lint:fix --workspaces",
     "clean": "npm run clean --workspaces && rm -rf node_modules test-results playwright-report",
     "clean:cache": "npm run clean && rm -rf .npm .cache",
-    "docker:up": "docker-compose up -d",
-    "docker:down": "docker-compose down",
-    "docker:build": "docker-compose build",
-    "docker:logs": "docker-compose logs -f wordpress",
-    "docker:wp-cli": "docker-compose exec wp-cli wp",
-    "docker:mysql": "docker-compose exec db mysql -u wordpress -p",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:build": "docker compose build",
+    "docker:logs": "docker compose logs -f wordpress",
+    "docker:wp-cli": "docker compose exec wp-cli wp",
+    "docker:mysql": "docker compose exec db mysql -u wordpress -p",
     "setup": "npm install && npm run playwright:install && npm run docker:up",
-    "reset": "npm run docker:down && docker-compose rm -f && npm run docker:up"
+    "reset": "npm run docker:down && docker compose rm -f && npm run docker:up"
   },
   "devDependencies": {
     "@playwright/test": "^1.41.0",

@@ -6,6 +6,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 WordPress AI Content Flow Plugin - An AI-powered content workflow system that integrates multiple AI providers (OpenAI, Anthropic, Google AI) directly into the WordPress Gutenberg block editor for content generation, editing suggestions, and workflow automation.
 
+## Screenshots and Documentation
+
+**ALWAYS check the `tmp/` subfolder first for screenshots, error reports, and project documentation:**
+- User-provided screenshots are stored in `/home/timl/dev/WP_ContentFlow/tmp/`
+- Check this directory before asking for additional information
+- Screenshots may show WordPress admin interfaces, error messages, or setup instructions
+- Use these screenshots to understand current project state and user requirements
+
 ## CRITICAL: Specialized Subagents
 
 **Use specialized subagents via the Task tool for domain-specific work:**
@@ -125,7 +133,9 @@ cd wp-content-flow && phpunit
 npm run docker:up
 
 # WordPress admin: http://localhost:8080/wp-admin
-# Username: admin, Password: admin123!@#
+# Username: admin, Password: !3cTXkh)9iDHhV5o*N
+# Email: tl.oralucent@gmail.com
+# Site Title: WP_Contentflow Test
 
 # Stop environment
 npm run docker:down

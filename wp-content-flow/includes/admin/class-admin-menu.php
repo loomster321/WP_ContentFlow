@@ -50,6 +50,7 @@ class WP_Content_Flow_Admin_Menu {
     private function init_hooks() {
         add_action('admin_menu', array($this, 'register_admin_menu'));
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_scripts'));
+        add_action('admin_init', array($this, 'init_settings'));
     }
     
     /**
@@ -99,6 +100,22 @@ class WP_Content_Flow_Admin_Menu {
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('wp_content_flow_nonce'),
         ));
+    }
+    
+    /**
+     * Settings page instance
+     * @var WP_Content_Flow_Settings_Page
+     */
+    private $settings_page;
+    
+    /**
+     * Initialize settings
+     */
+    public function init_settings() {
+        // Initialize settings page to register settings on admin_init
+        if (class_exists('WP_Content_Flow_Settings_Page') && !$this->settings_page) {
+            $this->settings_page = new WP_Content_Flow_Settings_Page();
+        }
     }
     
     /**
@@ -283,9 +300,9 @@ class WP_Content_Flow_Admin_Menu {
      * Render settings page
      */
     public function render_settings_page() {
-        if (class_exists('WP_Content_Flow_Settings_Page')) {
-            $settings_page = new WP_Content_Flow_Settings_Page();
-            $settings_page->render();
+        // Use the settings page instance that was created during init_settings()
+        if ($this->settings_page) {
+            $this->settings_page->render();
         } else {
             echo '<div class="wrap">';
             echo '<h1>' . __('Settings', 'wp-content-flow') . '</h1>';

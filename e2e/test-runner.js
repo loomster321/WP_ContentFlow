@@ -249,8 +249,28 @@ Examples:
     // Check if test files exist
     const testDir = path.join(__dirname);
     const testPattern = testConfig.pattern;
-    const glob = require('glob');
-    const testFiles = glob.sync(testPattern, { cwd: testDir });
+    
+    // Simple pattern matching using fs instead of glob
+    const findTestFiles = (dir, pattern) => {
+      try {
+        const files = [];
+        const items = fs.readdirSync(dir, { withFileTypes: true });
+        
+        for (const item of items) {
+          const fullPath = path.join(dir, item.name);
+          if (item.isDirectory()) {
+            files.push(...findTestFiles(fullPath, pattern));
+          } else if (item.name.endsWith('.spec.js')) {
+            files.push(fullPath);
+          }
+        }
+        return files;
+      } catch (error) {
+        return [];
+      }
+    };
+    
+    const testFiles = findTestFiles(testDir, testPattern);
     
     if (testFiles.length === 0) {
       throw new Error(`No test files found matching pattern: ${testPattern}`);
@@ -268,10 +288,10 @@ Examples:
       
       const { execSync } = require('child_process');
       try {
-        const containers = execSync('docker-compose ps -q wordpress', { encoding: 'utf8' });
+        const containers = execSync('docker compose ps -q wordpress', { encoding: 'utf8' });
         if (!containers.trim()) {
           console.log('🚀 Starting Docker containers...');
-          execSync('docker-compose up -d wordpress mysql phpmyadmin', { stdio: 'inherit' });
+          execSync('docker compose up -d wordpress mysql phpmyadmin', { stdio: 'inherit' });
           
           // Wait for WordPress to be ready
           console.log('⏳ Waiting for WordPress to be ready...');
@@ -328,10 +348,7 @@ Examples:
       '--reporter=list,html,json'
     ];
 
-    // Environment-specific options
-    if (envConfig.headless !== false && !this.config.headed) {
-      playwrightArgs.push('--headed=false');
-    }
+    // Environment-specific options (headless is default, no need to specify)
 
     if (this.config.headed || this.config.debug) {
       playwrightArgs.push('--headed');

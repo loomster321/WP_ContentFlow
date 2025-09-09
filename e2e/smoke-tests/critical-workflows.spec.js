@@ -20,9 +20,9 @@ test.describe('Critical WordPress AI Content Flow Workflows', () => {
     // Ensure we start from a clean state
     await page.goto('/wp-admin/');
     
-    // Login as admin
+    // Login as admin (credentials from WordPress installation)
     await page.fill('#user_login', 'admin');
-    await page.fill('#user_pass', 'admin123!@#');
+    await page.fill('#user_pass', '!3cTXkh)9iDHhV5o*N');
     await page.click('#wp-submit');
     
     // Wait for dashboard to load
