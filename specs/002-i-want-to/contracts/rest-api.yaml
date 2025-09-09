@@ -1,0 +1,470 @@
+openapi: 3.0.3
+info:
+  title: WordPress AI Content Workflow Plugin API
+  description: REST API endpoints for AI-powered content workflows in WordPress
+  version: 1.0.0
+  contact:
+    name: WP Content Flow Plugin
+    
+servers:
+  - url: '{wordpress_url}/wp-json/wp-content-flow/v1'
+    description: WordPress REST API base
+    variables:
+      wordpress_url:
+        default: 'https://example.com'
+        description: WordPress site URL
+
+security:
+  - wordpress_nonce: []
+  - wordpress_cookie: []
+
+paths:
+  /workflows:
+    get:
+      summary: List AI workflows
+      description: Retrieve all AI workflows for the current user
+      tags:
+        - Workflows
+      parameters:
+        - name: status
+          in: query
+          description: Filter by workflow status
+          schema:
+            type: string
+            enum: [active, inactive, archived]
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: List of workflows
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  workflows:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Workflow'
+                  total:
+                    type: integer
+                  pages:
+                    type: integer
+    
+    post:
+      summary: Create new AI workflow
+      description: Create a new AI workflow configuration
+      tags:
+        - Workflows
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateWorkflowRequest'
+      responses:
+        '201':
+          description: Workflow created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workflow'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /workflows/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    
+    get:
+      summary: Get specific workflow
+      tags:
+        - Workflows
+      responses:
+        '200':
+          description: Workflow details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workflow'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    
+    put:
+      summary: Update workflow
+      tags:
+        - Workflows
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateWorkflowRequest'
+      responses:
+        '200':
+          description: Workflow updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workflow'
+    
+    delete:
+      summary: Delete workflow
+      tags:
+        - Workflows
+      responses:
+        '204':
+          description: Workflow deleted successfully
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /ai/generate:
+    post:
+      summary: Generate AI content
+      description: Generate new content using AI based on prompts and parameters
+      tags:
+        - AI Operations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateContentRequest'
+      responses:
+        '200':
+          description: Content generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AISuggestion'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/RateLimit'
+
+  /ai/improve:
+    post:
+      summary: Improve existing content
+      description: Get AI suggestions for improving selected content
+      tags:
+        - AI Operations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImproveContentRequest'
+      responses:
+        '200':
+          description: Improvement suggestions generated
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AISuggestion'
+
+  /suggestions/{id}/accept:
+    post:
+      summary: Accept AI suggestion
+      description: Accept and apply an AI content suggestion
+      tags:
+        - Suggestions
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Suggestion accepted and applied
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+
+  /suggestions/{id}/reject:
+    post:
+      summary: Reject AI suggestion
+      tags:
+        - Suggestions
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Suggestion rejected
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+
+  /posts/{post_id}/history:
+    get:
+      summary: Get content history
+      description: Retrieve AI-assisted change history for a post
+      tags:
+        - Content History
+      parameters:
+        - name: post_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Content history retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ContentHistory'
+
+components:
+  securitySchemes:
+    wordpress_nonce:
+      type: apiKey
+      in: header
+      name: X-WP-Nonce
+    wordpress_cookie:
+      type: apiKey
+      in: cookie
+      name: wordpress_logged_in
+
+  schemas:
+    Workflow:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+        ai_provider:
+          type: string
+          enum: [openai, anthropic, google, azure]
+        settings:
+          type: object
+          additionalProperties: true
+        status:
+          type: string
+          enum: [active, inactive, archived]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateWorkflowRequest:
+      type: object
+      required:
+        - name
+        - ai_provider
+        - settings
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+        ai_provider:
+          type: string
+          enum: [openai, anthropic, google, azure]
+        settings:
+          type: object
+          additionalProperties: true
+
+    UpdateWorkflowRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+        settings:
+          type: object
+        status:
+          type: string
+          enum: [active, inactive, archived]
+
+    GenerateContentRequest:
+      type: object
+      required:
+        - prompt
+        - workflow_id
+      properties:
+        prompt:
+          type: string
+          minLength: 1
+        workflow_id:
+          type: integer
+        post_id:
+          type: integer
+          description: Target post ID for content generation
+        parameters:
+          type: object
+          properties:
+            max_tokens:
+              type: integer
+              minimum: 50
+              maximum: 4000
+            temperature:
+              type: number
+              minimum: 0.0
+              maximum: 2.0
+
+    ImproveContentRequest:
+      type: object
+      required:
+        - content
+        - workflow_id
+      properties:
+        content:
+          type: string
+          minLength: 1
+        workflow_id:
+          type: integer
+        improvement_type:
+          type: string
+          enum: [grammar, style, clarity, engagement, seo]
+
+    AISuggestion:
+      type: object
+      properties:
+        id:
+          type: integer
+        post_id:
+          type: integer
+        workflow_id:
+          type: integer
+        original_content:
+          type: string
+        suggested_content:
+          type: string
+        suggestion_type:
+          type: string
+          enum: [generation, improvement, correction]
+        status:
+          type: string
+          enum: [pending, accepted, rejected, modified]
+        confidence_score:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+        created_at:
+          type: string
+          format: date-time
+
+    ContentHistory:
+      type: object
+      properties:
+        id:
+          type: integer
+        post_id:
+          type: integer
+        suggestion_id:
+          type: integer
+          nullable: true
+        content_before:
+          type: string
+        content_after:
+          type: string
+        change_type:
+          type: string
+          enum: [ai_generated, ai_improved, manual_edit, ai_rejected]
+        revision_number:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              code:
+                type: string
+              message:
+                type: string
+              data:
+                type: object
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              code:
+                type: string
+                example: "rest_not_found"
+              message:
+                type: string
+                example: "Workflow not found"
+
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              code:
+                type: string
+                example: "rest_forbidden"
+              message:
+                type: string
+                example: "You do not have permission to perform this action"
+
+    RateLimit:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              code:
+                type: string
+                example: "rate_limit_exceeded"
+              message:
+                type: string
+                example: "Too many AI requests. Please try again later"
