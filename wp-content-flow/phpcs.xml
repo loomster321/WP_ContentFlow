@@ -1,0 +1,95 @@
+<?xml version="1.0"?>
+<ruleset name="WordPress AI Content Flow">
+    <description>WordPress coding standards for AI Content Flow Plugin</description>
+
+    <!-- Scan all PHP files -->
+    <file>.</file>
+
+    <!-- Exclude specific directories -->
+    <exclude-pattern>*/vendor/*</exclude-pattern>
+    <exclude-pattern>*/node_modules/*</exclude-pattern>
+    <exclude-pattern>*/build/*</exclude-pattern>
+    <exclude-pattern>*/coverage/*</exclude-pattern>
+    <exclude-pattern>*/languages/*</exclude-pattern>
+    <exclude-pattern>*/.git/*</exclude-pattern>
+
+    <!-- Use WordPress coding standards -->
+    <rule ref="WordPress">
+        <!-- Allow short array syntax -->
+        <exclude name="Generic.Arrays.DisallowShortArraySyntax"/>
+        
+        <!-- Allow filename without class- prefix for main plugin file -->
+        <exclude name="WordPress.Files.FileName"/>
+    </rule>
+
+    <!-- Use WordPress-Extra for additional checks -->
+    <rule ref="WordPress-Extra">
+        <!-- Exclude specific rules that may not apply to modern WordPress -->
+        <exclude name="WordPress.Files.FileName.InvalidClassFileName"/>
+        <exclude name="WordPress.Files.FileName.NotHyphenatedLowercase"/>
+    </rule>
+
+    <!-- Use WordPress-Docs for documentation standards -->
+    <rule ref="WordPress-Docs"/>
+
+    <!-- Check for PHP 8.1+ compatibility -->
+    <rule ref="PHPCompatibilityWP"/>
+    <config name="testVersion" value="8.1-"/>
+
+    <!-- Set minimum supported WordPress version -->
+    <config name="minimum_supported_wp_version" value="6.0"/>
+
+    <!-- Allow short ternary operator for PHP 8+ -->
+    <rule ref="WordPress.PHP.DisallowShortTernary">
+        <severity>0</severity>
+    </rule>
+
+    <!-- Custom rules for plugin development -->
+    
+    <!-- Ensure proper text domain usage -->
+    <rule ref="WordPress.WP.I18n">
+        <properties>
+            <property name="text_domain" type="array">
+                <element value="wp-content-flow"/>
+            </property>
+        </properties>
+    </rule>
+
+    <!-- Check for proper WordPress database access -->
+    <rule ref="WordPress.DB.DirectDatabaseQuery">
+        <properties>
+            <property name="customCacheDeleteFunctions" type="array">
+                <element value="wp_cache_delete"/>
+                <element value="wp_cache_flush"/>
+            </property>
+            <property name="customCacheGetFunctions" type="array">
+                <element value="wp_cache_get"/>
+            </property>
+            <property name="customCacheSetFunctions" type="array">
+                <element value="wp_cache_set"/>
+                <element value="wp_cache_add"/>
+            </property>
+        </properties>
+    </rule>
+
+    <!-- Security rules -->
+    <rule ref="WordPress.Security.ValidatedSanitizedInput"/>
+    <rule ref="WordPress.Security.EscapeOutput"/>
+    <rule ref="WordPress.Security.NonceVerification"/>
+
+    <!-- Performance rules -->
+    <rule ref="WordPress.Performance.SlowDBQuery"/>
+
+    <!-- Set file extensions to check -->
+    <arg name="extensions" value="php"/>
+
+    <!-- Show progress and use colors -->
+    <arg value="sp"/>
+    <arg name="colors"/>
+
+    <!-- Show sniff names in all reports -->
+    <arg value="s"/>
+
+    <!-- Set error severity -->
+    <config name="severity" value="1"/>
+</ruleset>

@@ -1,0 +1,184 @@
+# WordPress AI Content Flow Plugin - .gitignore
+
+# === WordPress Core ===
+# Exclude WordPress core files if this is a full WP install
+# wp-admin/
+# wp-includes/
+# wp-*.php
+# index.php
+# license.txt
+# readme.html
+# xmlrpc.php
+
+# === WordPress Content ===
+# Keep plugins and themes structure but exclude other content
+# wp-content/*
+# !wp-content/plugins/
+# !wp-content/themes/
+# wp-content/plugins/*
+# !wp-content/plugins/wp-content-flow/
+# wp-content/uploads/
+# wp-content/blogs.dir/
+# wp-content/upgrade/
+# wp-content/backup-db/
+# wp-content/advanced-cache.php
+# wp-content/wp-cache-config.php
+# wp-content/cache/
+# wp-content/cache/*
+
+# === WordPress Configuration ===
+wp-config.php
+wp-config-local.php
+wp-config-production.php
+.htaccess
+
+# === Plugin Development ===
+# Node modules and package files
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm/
+.yarn/
+package-lock.json
+yarn.lock
+
+# Compiled assets
+/dist/
+/build/
+*.min.js
+*.min.css
+*.map
+
+# === Testing ===
+# Test results and coverage
+/test-results/
+/test-archives/
+/coverage/
+*.lcov
+.nyc_output/
+playwright-report/
+test-report.html
+
+# PHPUnit
+phpunit.xml
+/tests/bootstrap-local.php
+/tests/tmp/
+.phpunit.result.cache
+
+# === Logs ===
+*.log
+logs/
+/wp-content-flow/logs/
+error_log
+debug.log
+wp-errors.log
+
+# === Environment and Configuration ===
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env.staging
+.DS_Store
+Thumbs.db
+
+# === IDE and Editors ===
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.settings/
+
+# === Composer ===
+/vendor/
+composer.lock
+
+# === WordPress Plugin Specific ===
+# Plugin zip files
+*.zip
+wp-content-flow.zip
+
+# Temporary files
+tmp/
+*.tmp
+*.bak
+*~
+
+# === Docker ===
+# Keep docker-compose but exclude data
+docker-compose.override.yml
+.docker/
+/mysql-data/
+/wordpress-data/
+
+# === AI Provider Keys (SECURITY) ===
+# Never commit API keys
+*api-key*
+*secret*
+*private*
+.anthropic
+.openai
+.google-ai
+
+# === Context7 and Debugging ===
+context7-*.log
+debug-*.log
+/logs/context7.log
+
+# === WordPress Plugin Repository ===
+# Keep development files in main repo, exclude from plugin distribution
+# These are needed for development but not for plugin users
+/scripts/build-plugin.sh
+/scripts/package-plugin.sh
+
+# Keep testing configs for development
+# playwright.config.js - KEEP for E2E testing
+# jest.config.js - KEEP for unit testing
+# phpunit.xml.dist - KEEP for WordPress testing
+
+# === Build and Deployment ===
+/releases/
+*.tar.gz
+*.tgz
+
+# === OS Generated ===
+.DS_Store?
+ehthumbs.db
+Icon?
+Thumbs.db
+*.pid
+*.seed
+*.pid.lock
+
+# === Backup files ===
+*.sql
+*.sql.gz
+*.backup
+wp-content/backup/
+wp-content/backups/
+
+# === WordPress Specific Logs ===
+wp-content/debug.log
+wp-content/uploads/wc-logs/
+
+# === Cache Files ===
+wp-content/cache/
+wp-content/w3tc-config/
+wp-content/object-cache.php
+
+# === Security ===
+# Never commit sensitive WordPress files
+wp-config-sample.php
+.htaccess.backup
+.well-known/
+
+# === Temporary Upload Files ===
+uploads.ini
+
+# === Development Database ===
+*.sqlite
+*.db

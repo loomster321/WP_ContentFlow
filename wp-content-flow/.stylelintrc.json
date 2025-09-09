@@ -1,0 +1,29 @@
+{
+    "extends": [
+        "@wordpress/stylelint-config",
+        "@wordpress/stylelint-config/scss"
+    ],
+    "rules": {
+        "indentation": "tab",
+        "string-quotes": "single",
+        "color-hex-case": "lower",
+        "color-hex-length": "short",
+        "declaration-block-trailing-semicolon": "always",
+        "declaration-colon-space-after": "always-single-line",
+        "declaration-colon-space-before": "never",
+        "function-comma-space-after": "always-single-line",
+        "function-parentheses-space-inside": "never",
+        "media-feature-parentheses-space-inside": "never",
+        "no-duplicate-selectors": true,
+        "no-empty-source": null,
+        "selector-class-pattern": null,
+        "selector-id-pattern": null,
+        "value-keyword-case": "lower"
+    },
+    "ignoreFiles": [
+        "build/**",
+        "node_modules/**",
+        "vendor/**",
+        "coverage/**"
+    ]
+}

@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  wordpress:
+    image: wordpress:6.4-php8.1-apache
+    restart: always
+    ports:
+      - "8080:80"
+    environment:
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+      WORDPRESS_DB_NAME: wordpress
+      WORDPRESS_DEBUG: 1
+      WORDPRESS_DEBUG_LOG: 1
+    volumes:
+      - wordpress_data:/var/www/html
+      - ./wp-content-flow:/var/www/html/wp-content/plugins/wp-content-flow
+      - ./uploads.ini:/usr/local/etc/php/conf.d/uploads.ini
+    depends_on:
+      - db
+    networks:
+      - wp-network
+
+  db:
+    image: mysql:8.0
+    restart: always
+    environment:
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wordpress
+      MYSQL_PASSWORD: wordpress
+      MYSQL_ROOT_PASSWORD: rootpassword
+    volumes:
+      - db_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks:
+      - wp-network
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    restart: always
+    ports:
+      - "8081:80"
+    environment:
+      PMA_HOST: db
+      PMA_USER: wordpress
+      PMA_PASSWORD: wordpress
+    depends_on:
+      - db
+    networks:
+      - wp-network
+
+  wp-cli:
+    image: wordpress:cli-2.9-php8.1
+    restart: "no"
+    environment:
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+      WORDPRESS_DB_NAME: wordpress
+    volumes:
+      - wordpress_data:/var/www/html
+      - ./wp-content-flow:/var/www/html/wp-content/plugins/wp-content-flow
+    depends_on:
+      - db
+      - wordpress
+    networks:
+      - wp-network
+
+volumes:
+  wordpress_data:
+  db_data:
+
+networks:
+  wp-network:
+    driver: bridge

@@ -1,0 +1,62 @@
+# PHPStan configuration for WordPress AI Content Flow Plugin
+
+includes:
+    - vendor/szepeviktor/phpstan-wordpress/extension.neon
+
+parameters:
+    # Set analysis level (0-9, higher = stricter)
+    level: 8
+    
+    # Paths to analyze
+    paths:
+        - wp-content-flow.php
+        - includes/
+    
+    # Bootstrap file for WordPress functions
+    bootstrapFiles:
+        - vendor/php-stubs/wordpress-stubs/wordpress-stubs.php
+    
+    # Exclude paths
+    excludePaths:
+        - vendor/
+        - node_modules/
+        - tests/
+        - build/
+        - coverage/
+    
+    # Ignored error patterns
+    ignoreErrors:
+        # WordPress specific functions that PHPStan might not recognize
+        - '#Function wp_[a-z_]+ not found\.#'
+        - '#Constant WP_[A-Z_]+ not found\.#'
+        
+        # Allow WordPress global variables
+        - '#Variable \$wpdb might not be defined\.#'
+        - '#Variable \$wp_query might not be defined\.#'
+        - '#Variable \$post might not be defined\.#'
+        
+        # Allow WordPress hooks with mixed parameters
+        - '#Parameter .* of function (add_action|add_filter) expects .*, array\(.+\) given\.#'
+        
+        # Allow WordPress nonce functions
+        - '#Function wp_create_nonce not found\.#'
+        - '#Function wp_verify_nonce not found\.#'
+        
+        # Allow WordPress database methods
+        - '#Call to method [a-z_]+ on an unknown class wpdb\.#'
+    
+    # Additional rules
+    checkMissingIterableValueType: false
+    checkGenericClassInNonGenericObjectType: false
+    
+    # WordPress specific settings
+    wordpress:
+        # WordPress version for compatibility checks  
+        version: '6.4'
+        
+        # Enable WordPress specific checks
+        checks:
+            nonce: true
+            capability: true
+            sql_injection: true
+            xss: true
