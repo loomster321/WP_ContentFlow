@@ -75,8 +75,36 @@
       "blocks/**/*.js",
       "!**/node_modules/**",
       "!**/vendor/**",
-      "!**/build/**"
-    ]
+      "!**/build/**",
+      "!**/*.min.js",
+      "!**/test-utils/**"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 80,
+        "functions": 85,
+        "lines": 85,
+        "statements": 85
+      },
+      "assets/js/blocks.js": {
+        "branches": 90,
+        "functions": 90,
+        "lines": 90,
+        "statements": 90
+      }
+    },
+    "coverageReporters": [
+      "text",
+      "lcov",
+      "html",
+      "json-summary"
+    ],
+    "testTimeout": 10000,
+    "verbose": true,
+    "moduleNameMapping": {
+      "^@wordpress/(.*)$": "<rootDir>/node_modules/@wordpress/$1",
+      "^@/(.*)$": "<rootDir>/$1"
+    }
   },
   "wp-scripts": {
     "entry": {
