@@ -25,7 +25,165 @@
         // Handle suggestion application
         $('.apply-suggestion').on('click', handleApplySuggestion);
         
+        // Handle settings form submission debugging
+        initializeSettingsDebugging();
+        
         console.log('WP Content Flow admin initialized');
+    }
+    
+    /**
+     * Initialize settings form debugging
+     */
+    function initializeSettingsDebugging() {
+        console.log('Initializing WP Content Flow settings debugging...');
+        
+        // Enhanced settings form handling with specific form ID
+        $(document).on('submit', '#wp-content-flow-settings-form', function(e) {
+            console.log('WP Content Flow Settings form submission detected');
+            
+            var $form = $(this);
+            var formData = $form.serializeArray();
+            console.log('Settings form data:', formData);
+            
+            // Validate at least one API key is provided
+            var hasApiKey = false;
+            var apiKeyFields = [
+                'wp_content_flow_settings[openai_api_key]',
+                'wp_content_flow_settings[anthropic_api_key]',
+                'wp_content_flow_settings[google_api_key]'
+            ];
+            
+            formData.forEach(function(field) {
+                if (apiKeyFields.includes(field.name) && field.value.trim() !== '') {
+                    hasApiKey = true;
+                    console.log('Found API key for:', field.name);
+                }
+            });
+            
+            // Check required security fields
+            var optionPage = $form.find('input[name="option_page"]').val();
+            var nonce = $form.find('input[name="_wpnonce"]').val();
+            
+            console.log('Form validation:', {
+                optionPage: optionPage,
+                noncePresent: !!nonce,
+                hasApiKey: hasApiKey,
+                formAction: $form.attr('action'),
+                formMethod: $form.attr('method')
+            });
+            
+            if (!optionPage || !nonce) {
+                console.error('Missing required security fields');
+                showNotice('Form security validation failed. Please refresh and try again.', 'error');
+                e.preventDefault();
+                return false;
+            }
+            
+            // Show loading state
+            var $submitBtn = $('#wp-content-flow-submit-btn');
+            if ($submitBtn.length === 0) {
+                $submitBtn = $form.find('input[type="submit"]');
+            }
+            
+            if ($submitBtn.length > 0) {
+                var originalText = $submitBtn.val();
+                $submitBtn.val('Saving Settings...').prop('disabled', true);
+                
+                // Re-enable after delay as safety measure
+                setTimeout(function() {
+                    $submitBtn.val(originalText).prop('disabled', false);
+                }, 15000);
+            }
+            
+            console.log('Form validation passed, submitting...');
+            return true;
+        });
+        
+        // Generic form debugging (fallback for other forms)
+        $('form').on('submit', function(e) {
+            var $form = $(this);
+            
+            // Only handle forms with option_page that aren't our main form
+            if ($form.find('input[name="option_page"]').length > 0 && !$form.is('#wp-content-flow-settings-form')) {
+                console.log('Generic WordPress settings form submission detected');
+                
+                var optionPage = $form.find('input[name="option_page"]').val();
+                console.log('Generic form option_page:', optionPage);
+                
+                if (optionPage && optionPage.includes('wp_content_flow')) {
+                    console.log('This appears to be a WP Content Flow form without proper ID');
+                    var formData = $form.serializeArray();
+                    console.log('Generic WP Content Flow form data:', formData);
+                }
+            }
+        });
+        
+        // Enhanced message detection
+        setTimeout(function() {
+            checkForAdminMessages();
+        }, 500);
+        
+        // Monitor URL changes for settings updates
+        if (window.location.search.includes('settings-updated=true') || 
+            window.location.search.includes('wp-content-flow-settings')) {
+            console.log('Settings page loaded with potential update');
+            setTimeout(checkForAdminMessages, 1000);
+        }
+    }
+    
+    /**
+     * Check for WordPress admin messages
+     */
+    function checkForAdminMessages() {
+        console.log('Checking for admin messages...');
+        
+        var $allNotices = $('.notice, .updated, .error, .settings-error');
+        console.log('Total admin notices found:', $allNotices.length);
+        
+        var $successNotices = $('.notice-success, .updated, .settings-error-settings_updated');
+        var $errorNotices = $('.notice-error, .error');
+        var $warningNotices = $('.notice-warning');
+        
+        if ($successNotices.length > 0) {
+            console.log('✅ Success notices found:', $successNotices.length);
+            $successNotices.each(function(index) {
+                var text = $(this).text().trim();
+                console.log(`Success notice ${index + 1}:`, text);
+            });
+        }
+        
+        if ($errorNotices.length > 0) {
+            console.log('❌ Error notices found:', $errorNotices.length);
+            $errorNotices.each(function(index) {
+                var text = $(this).text().trim();
+                console.log(`Error notice ${index + 1}:`, text);
+            });
+        }
+        
+        if ($warningNotices.length > 0) {
+            console.log('⚠️ Warning notices found:', $warningNotices.length);
+            $warningNotices.each(function(index) {
+                var text = $(this).text().trim();
+                console.log(`Warning notice ${index + 1}:`, text);
+            });
+        }
+        
+        if ($allNotices.length === 0) {
+            console.log('No admin notices found on the page');
+        }
+        
+        // Look for specific WP Content Flow messages
+        var $wpContentFlowNotices = $allNotices.filter(function() {
+            return $(this).text().toLowerCase().includes('content flow') || 
+                   $(this).text().toLowerCase().includes('settings saved');
+        });
+        
+        if ($wpContentFlowNotices.length > 0) {
+            console.log('🎯 WP Content Flow specific notices found:', $wpContentFlowNotices.length);
+            $wpContentFlowNotices.each(function(index) {
+                console.log(`WP Content Flow notice ${index + 1}:`, $(this).text().trim());
+            });
+        }
     }
     
     /**

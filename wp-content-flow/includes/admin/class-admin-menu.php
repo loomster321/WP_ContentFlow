@@ -112,9 +112,20 @@ class WP_Content_Flow_Admin_Menu {
      * Initialize settings
      */
     public function init_settings() {
+        error_log('WP Content Flow Admin Menu: init_settings() called');
+        
         // Initialize settings page to register settings on admin_init
         if (class_exists('WP_Content_Flow_Settings_Page') && !$this->settings_page) {
+            error_log('WP Content Flow Admin Menu: Creating settings page instance');
             $this->settings_page = new WP_Content_Flow_Settings_Page();
+            error_log('WP Content Flow Admin Menu: Settings page instance created');
+        } else {
+            if (!class_exists('WP_Content_Flow_Settings_Page')) {
+                error_log('WP Content Flow Admin Menu: WP_Content_Flow_Settings_Page class not found');
+            }
+            if ($this->settings_page) {
+                error_log('WP Content Flow Admin Menu: Settings page instance already exists');
+            }
         }
     }
     

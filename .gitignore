@@ -123,6 +123,17 @@ docker-compose.override.yml
 .anthropic
 .openai
 .google-ai
+# OpenAI API key patterns
+sk-proj-*
+sk-*
+# Anthropic API key patterns  
+sk-ant-api*
+# Google AI API key patterns
+AIza*
+# Documentation that might contain keys
+*summary*.md
+*debug*.md
+*test*.md
 
 # === Context7 and Debugging ===
 context7-*.log

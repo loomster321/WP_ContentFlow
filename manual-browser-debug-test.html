@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WordPress Content Flow Settings Debug Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .step { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .step h3 { margin-top: 0; color: #0073aa; }
+        .result { background: #f0f8ff; padding: 10px; margin: 10px 0; border-radius: 3px; }
+        .error { background: #ffe6e6; color: #d63384; }
+        .success { background: #e6ffe6; color: #198754; }
+        .warning { background: #fff3cd; color: #856404; }
+        button { background: #0073aa; color: white; padding: 10px 20px; border: none; border-radius: 3px; cursor: pointer; }
+        button:hover { background: #005177; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        textarea { width: 100%; height: 100px; font-family: monospace; }
+        .instructions { background: #e7f3ff; padding: 15px; border-left: 4px solid #0073aa; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <h1>WordPress Content Flow Settings Debug Test</h1>
+    
+    <div class="instructions">
+        <h3>🧪 Manual Browser Test Instructions</h3>
+        <p><strong>This test will help debug the WordPress settings persistence issue.</strong></p>
+        <ol>
+            <li>Make sure WordPress is running at <a href="http://localhost:8080" target="_blank">http://localhost:8080</a></li>
+            <li>Click "Start Test" below to begin the automated testing sequence</li>
+            <li>Watch the console output and follow the prompts</li>
+            <li>The test will capture evidence of the settings save issue</li>
+        </ol>
+    </div>
+
+    <div class="step">
+        <h3>Step 1: Test Environment Check</h3>
+        <button onclick="checkEnvironment()">Check WordPress Environment</button>
+        <div id="env-result" class="result"></div>
+    </div>
+
+    <div class="step">
+        <h3>Step 2: WordPress Login Test</h3>
+        <button onclick="testLogin()" id="login-btn">Test WordPress Login</button>
+        <div id="login-result" class="result"></div>
+    </div>
+
+    <div class="step">
+        <h3>Step 3: Settings Page Access</h3>
+        <button onclick="testSettingsPage()" id="settings-btn" disabled>Access Settings Page</button>
+        <div id="settings-result" class="result"></div>
+    </div>
+
+    <div class="step">
+        <h3>Step 4: Form Data Capture</h3>
+        <button onclick="captureFormData()" id="form-btn" disabled>Capture Form Data</button>
+        <div id="form-result" class="result"></div>
+    </div>
+
+    <div class="step">
+        <h3>Step 5: Settings Save Test</h3>
+        <button onclick="testSettingsSave()" id="save-btn" disabled>Test Settings Save</button>
+        <div id="save-result" class="result"></div>
+    </div>
+
+    <div class="step">
+        <h3>Step 6: Full Report</h3>
+        <button onclick="generateReport()" id="report-btn" disabled>Generate Debug Report</button>
+        <div id="report-result" class="result"></div>
+        <textarea id="report-text" placeholder="Debug report will appear here..."></textarea>
+    </div>
+
+    <script>
+        let testData = {
+            environment: null,
+            loginCookies: null,
+            settingsNonce: null,
+            initialValues: null,
+            formData: null,
+            saveResponse: null,
+            finalValues: null
+        };
+
+        async function checkEnvironment() {
+            const resultDiv = document.getElementById('env-result');
+            resultDiv.innerHTML = 'Checking WordPress environment...';
+            
+            try {
+                // Test if WordPress is accessible
+                const response = await fetch('http://localhost:8080/wp-admin/', {
+                    method: 'HEAD',
+                    mode: 'no-cors'
+                });
+                
+                // Since mode is no-cors, we can't read the response, but we can detect if the request succeeded
+                testData.environment = 'accessible';
+                resultDiv.innerHTML = '<div class="success">✅ WordPress environment is accessible at http://localhost:8080</div>';
+                document.getElementById('login-btn').disabled = false;
+                
+            } catch (error) {
+                testData.environment = 'error';
+                resultDiv.innerHTML = `<div class="error">❌ Cannot access WordPress: ${error.message}</div>`;
+            }
+        }
+
+        async function testLogin() {
+            const resultDiv = document.getElementById('login-result');
+            resultDiv.innerHTML = 'Opening WordPress login in new tab...';
+            
+            // Open WordPress login in a new tab
+            const loginWindow = window.open('http://localhost:8080/wp-admin/', '_blank');
+            
+            resultDiv.innerHTML = `
+                <div class="warning">⚠️ Manual Step Required:</div>
+                <ol>
+                    <li>Login to WordPress in the new tab with:</li>
+                    <li><strong>Username:</strong> admin</li>
+                    <li><strong>Password:</strong> !3cTXkh)9iDHhV5o*N</li>
+                    <li>After logging in, come back here and click "Access Settings Page"</li>
+                </ol>
+            `;
+            
+            testData.loginCookies = 'manual_login_completed';
+            document.getElementById('settings-btn').disabled = false;
+        }
+
+        async function testSettingsPage() {
+            const resultDiv = document.getElementById('settings-result');
+            resultDiv.innerHTML = 'Opening WordPress Content Flow settings page...';
+            
+            // Open settings page in new tab
+            const settingsWindow = window.open('http://localhost:8080/wp-admin/admin.php?page=wp-content-flow-settings', '_blank');
+            
+            resultDiv.innerHTML = `
+                <div class="warning">⚠️ Manual Step Required:</div>
+                <ol>
+                    <li>Navigate to the settings page in the new tab</li>
+                    <li>Note the current values of:</li>
+                    <li style="margin-left: 20px;">• Default AI Provider dropdown</li>
+                    <li style="margin-left: 20px;">• Enable Caching checkbox</li>
+                    <li>Come back here and click "Capture Form Data"</li>
+                </ol>
+            `;
+            
+            testData.settingsNonce = 'manual_access_completed';
+            document.getElementById('form-btn').disabled = false;
+        }
+
+        async function captureFormData() {
+            const resultDiv = document.getElementById('form-result');
+            resultDiv.innerHTML = `
+                <div class="warning">📋 Manual Data Collection Required:</div>
+                <p>Please manually record the following information from the WordPress settings page:</p>
+                
+                <div style="margin: 10px 0;">
+                    <label><strong>Current Default AI Provider:</strong></label>
+                    <select id="current-provider">
+                        <option value="openai">OpenAI (GPT)</option>
+                        <option value="anthropic">Anthropic (Claude)</option>
+                        <option value="google">Google AI (Gemini)</option>
+                    </select>
+                </div>
+                
+                <div style="margin: 10px 0;">
+                    <label><strong>Current Enable Caching:</strong></label>
+                    <input type="checkbox" id="current-caching"> Enabled
+                </div>
+                
+                <div style="margin: 10px 0;">
+                    <label><strong>Test API Key (enter any test value):</strong></label>
+                    <input type="text" id="test-api-key" placeholder="sk-test-1234567890" style="width: 200px;">
+                </div>
+                
+                <button onclick="recordFormData()" style="margin-top: 10px;">Record Current Values</button>
+            `;
+        }
+
+        function recordFormData() {
+            const currentProvider = document.getElementById('current-provider').value;
+            const currentCaching = document.getElementById('current-caching').checked;
+            const testApiKey = document.getElementById('test-api-key').value;
+            
+            testData.initialValues = {
+                provider: currentProvider,
+                caching: currentCaching,
+                apiKey: testApiKey
+            };
+            
+            const resultDiv = document.getElementById('form-result');
+            resultDiv.innerHTML = `
+                <div class="success">✅ Form data recorded:</div>
+                <ul>
+                    <li><strong>Provider:</strong> ${currentProvider}</li>
+                    <li><strong>Caching:</strong> ${currentCaching}</li>
+                    <li><strong>API Key:</strong> ${testApiKey ? 'Provided' : 'Not provided'}</li>
+                </ul>
+            `;
+            
+            document.getElementById('save-btn').disabled = false;
+        }
+
+        async function testSettingsSave() {
+            const resultDiv = document.getElementById('save-result');
+            
+            if (!testData.initialValues) {
+                resultDiv.innerHTML = '<div class="error">❌ Please capture form data first</div>';
+                return;
+            }
+            
+            // Calculate new values (opposite of current)
+            const newProvider = testData.initialValues.provider === 'openai' ? 'anthropic' : 'openai';
+            const newCaching = !testData.initialValues.caching;
+            
+            resultDiv.innerHTML = `
+                <div class="warning">🧪 Settings Save Test Instructions:</div>
+                <p><strong>Please perform the following steps in the WordPress settings page:</strong></p>
+                <ol>
+                    <li>Change "Default AI Provider" from <strong>${testData.initialValues.provider}</strong> to <strong>${newProvider}</strong></li>
+                    <li>Change "Enable Caching" from <strong>${testData.initialValues.caching}</strong> to <strong>${newCaching}</strong></li>
+                    <li>Enter a test API key: <strong>${testData.initialValues.apiKey || 'sk-test-1234567890'}</strong></li>
+                    <li>Click "Save Settings"</li>
+                    <li>Watch for success/error messages</li>
+                    <li>Reload the page and check if values persisted</li>
+                    <li>Record the results below:</li>
+                </ol>
+                
+                <div style="margin: 15px 0; padding: 10px; background: #f9f9f9; border-radius: 5px;">
+                    <h4>Record Results:</h4>
+                    
+                    <div style="margin: 10px 0;">
+                        <label><strong>After Save - Provider Value:</strong></label>
+                        <select id="after-provider">
+                            <option value="openai">OpenAI (GPT)</option>
+                            <option value="anthropic">Anthropic (Claude)</option>
+                            <option value="google">Google AI (Gemini)</option>
+                        </select>
+                    </div>
+                    
+                    <div style="margin: 10px 0;">
+                        <label><strong>After Save - Caching:</strong></label>
+                        <input type="checkbox" id="after-caching"> Enabled
+                    </div>
+                    
+                    <div style="margin: 10px 0;">
+                        <label><strong>After Reload - Provider Value:</strong></label>
+                        <select id="reload-provider">
+                            <option value="openai">OpenAI (GPT)</option>
+                            <option value="anthropic">Anthropic (Claude)</option>
+                            <option value="google">Google AI (Gemini)</option>
+                        </select>
+                    </div>
+                    
+                    <div style="margin: 10px 0;">
+                        <label><strong>After Reload - Caching:</strong></label>
+                        <input type="checkbox" id="reload-caching"> Enabled
+                    </div>
+                    
+                    <div style="margin: 10px 0;">
+                        <label><strong>Success Message Shown:</strong></label>
+                        <input type="checkbox" id="success-message"> Yes
+                    </div>
+                    
+                    <div style="margin: 10px 0;">
+                        <label><strong>Error Message Shown:</strong></label>
+                        <input type="checkbox" id="error-message"> Yes
+                    </div>
+                    
+                    <button onclick="recordSaveResults()" style="margin-top: 10px;">Record Save Results</button>
+                </div>
+            `;
+            
+            testData.expectedValues = {
+                provider: newProvider,
+                caching: newCaching
+            };
+        }
+
+        function recordSaveResults() {
+            const afterProvider = document.getElementById('after-provider').value;
+            const afterCaching = document.getElementById('after-caching').checked;
+            const reloadProvider = document.getElementById('reload-provider').value;
+            const reloadCaching = document.getElementById('reload-caching').checked;
+            const successMessage = document.getElementById('success-message').checked;
+            const errorMessage = document.getElementById('error-message').checked;
+            
+            testData.saveResults = {
+                afterSave: { provider: afterProvider, caching: afterCaching },
+                afterReload: { provider: reloadProvider, caching: reloadCaching },
+                successMessage,
+                errorMessage
+            };
+            
+            const resultDiv = document.getElementById('save-result');
+            resultDiv.innerHTML = `
+                <div class="success">✅ Save results recorded:</div>
+                <ul>
+                    <li><strong>After Save:</strong> Provider: ${afterProvider}, Caching: ${afterCaching}</li>
+                    <li><strong>After Reload:</strong> Provider: ${reloadProvider}, Caching: ${reloadCaching}</li>
+                    <li><strong>Success Message:</strong> ${successMessage ? 'Shown' : 'Not shown'}</li>
+                    <li><strong>Error Message:</strong> ${errorMessage ? 'Shown' : 'Not shown'}</li>
+                </ul>
+            `;
+            
+            document.getElementById('report-btn').disabled = false;
+        }
+
+        function generateReport() {
+            if (!testData.initialValues || !testData.saveResults) {
+                document.getElementById('report-result').innerHTML = '<div class="error">❌ Please complete all test steps first</div>';
+                return;
+            }
+            
+            const expected = testData.expectedValues;
+            const actual = testData.saveResults.afterReload;
+            
+            const providerPersisted = actual.provider === expected.provider;
+            const cachingPersisted = actual.caching === expected.caching;
+            const overallSuccess = providerPersisted && cachingPersisted;
+            
+            const report = `
+WORDPRESS CONTENT FLOW SETTINGS PERSISTENCE DEBUG REPORT
+========================================================
+Generated: ${new Date().toISOString()}
+Test URL: http://localhost:8080/wp-admin/admin.php?page=wp-content-flow-settings
+
+INITIAL STATE:
+--------------
+Default AI Provider: ${testData.initialValues.provider}
+Enable Caching: ${testData.initialValues.caching}
+API Key Provided: ${testData.initialValues.apiKey ? 'Yes' : 'No'}
+
+EXPECTED CHANGES:
+-----------------
+Default AI Provider: ${testData.initialValues.provider} → ${expected.provider}
+Enable Caching: ${testData.initialValues.caching} → ${expected.caching}
+
+ACTUAL RESULTS:
+---------------
+After Save:
+  - Default AI Provider: ${testData.saveResults.afterSave.provider}
+  - Enable Caching: ${testData.saveResults.afterSave.caching}
+
+After Reload:
+  - Default AI Provider: ${testData.saveResults.afterReload.provider}
+  - Enable Caching: ${testData.saveResults.afterReload.caching}
+
+USER FEEDBACK:
+--------------
+Success Message Shown: ${testData.saveResults.successMessage ? 'YES' : 'NO'}
+Error Message Shown: ${testData.saveResults.errorMessage ? 'YES' : 'NO'}
+
+PERSISTENCE ANALYSIS:
+--------------------
+Provider Setting Persisted: ${providerPersisted ? 'SUCCESS ✅' : 'FAILED ❌'}
+  Expected: ${expected.provider}
+  Actual: ${actual.provider}
+
+Caching Setting Persisted: ${cachingPersisted ? 'SUCCESS ✅' : 'FAILED ❌'}
+  Expected: ${expected.caching}
+  Actual: ${actual.caching}
+
+OVERALL RESULT: ${overallSuccess ? 'SETTINGS PERSISTENCE WORKING ✅' : 'SETTINGS PERSISTENCE FAILED ❌'}
+
+ISSUE REPRODUCTION:
+------------------
+${overallSuccess ? 
+  'No issue found - settings are persisting correctly.' :
+  'ISSUE CONFIRMED: Settings are not persisting after save and reload.'
+}
+
+RECOMMENDED NEXT STEPS:
+-----------------------
+${overallSuccess ? 
+  '1. Settings appear to be working correctly\n2. May be a caching or race condition issue\n3. Test with different browsers\n4. Check for JavaScript errors' :
+  '1. Check WordPress Settings API registration\n2. Verify database option updates\n3. Check for PHP errors in WordPress debug log\n4. Validate form nonce and security\n5. Test with different WordPress configurations'
+}
+
+TECHNICAL DETAILS:
+------------------
+WordPress Version: 6.4
+PHP Version: 8.1
+Plugin Version: 1.0.0
+Test Method: Manual browser verification
+Browser: ${navigator.userAgent}
+Timestamp: ${Date.now()}
+            `;
+            
+            document.getElementById('report-text').value = report;
+            
+            const resultDiv = document.getElementById('report-result');
+            resultDiv.innerHTML = `
+                <div class="${overallSuccess ? 'success' : 'error'}">
+                    ${overallSuccess ? '✅ Test Complete - No persistence issues found' : '❌ Test Complete - Settings persistence issue confirmed'}
+                </div>
+                <p>Detailed report generated below. Copy and paste this report for further analysis.</p>
+            `;
+        }
+
+        // Initialize the test
+        window.onload = function() {
+            console.log('WordPress Content Flow Settings Debug Test loaded');
+            console.log('Click "Check WordPress Environment" to begin testing');
+        };
+    </script>
+</body>
+</html>

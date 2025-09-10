@@ -16,54 +16,72 @@ WordPress AI Content Flow Plugin - An AI-powered content workflow system that in
 
 ## CRITICAL: Specialized Subagents
 
-**Use specialized subagents via the Task tool for domain-specific work:**
+**Use the general-purpose subagent via the Task tool, referencing specialized agents in `.claude/agents/` for domain-specific work:**
 
-### WordPress Testing Agent
-- **Subagent**: `wordpress-testing-agent`
-- **Specialization**: WordPress plugin testing, Gutenberg blocks, admin interfaces
-- **Use when**: Running E2E tests, validating WordPress functionality, testing user workflows
-- **Access**: WordPress test environment, Playwright configuration, test data setup
+### Available Specialized Agents
+- **WordPress Developer Expert** (`.claude/agents/wordpress-developer-expert.md`)
+- **WordPress Playwright Expert** (`.claude/agents/wordpress-playwright-expert.md`)
+- **AI Validation Expert** (`.claude/agents/ai-validation-expert.md`)
+- **Performance Testing Expert** (`.claude/agents/performance-testing-expert.md`)
 
-Example usage:
-```
-Use Task tool with subagent_type: "wordpress-testing-agent" to:
-- Execute comprehensive E2E test suites for WordPress admin workflows
-- Validate Gutenberg block editor integration and AI content generation
-- Test user capability enforcement across different WordPress roles
-- Verify plugin activation/deactivation and settings management
-- Run cross-browser compatibility tests for WordPress themes
-```
-
-### AI Validation Agent  
-- **Subagent**: `ai-validation-agent`
-- **Specialization**: AI provider integration, content validation, safety checks
-- **Use when**: Validating AI responses, testing provider switching, content safety
-- **Access**: AI provider configurations, content validation rules, safety filters
+### WordPress Developer Expert
+- **Specialization**: WordPress plugin and theme development, architecture, and standards
+- **Use when**: Implementing WordPress features, following best practices, architecting solutions
+- **Expertise**: WordPress core, plugin architecture, Gutenberg blocks, Security, REST API, database design
 
 Example usage:
 ```
-Use Task tool with subagent_type: "ai-validation-agent" to:
+Use Task tool with subagent_type: "general-purpose" and reference wordpress-developer-expert.md to:
+- Implement WordPress plugin architecture and core functionality
+- Create custom Gutenberg blocks and admin interfaces
+- Design database schemas and custom post types following WordPress standards
+- Implement WordPress REST API endpoints and security best practices
+- Prepare plugins for WordPress.org repository submission
+```
+
+### WordPress Playwright Expert
+- **Specialization**: WordPress plugin E2E testing using Playwright
+- **Use when**: Testing settings forms, admin interfaces, user workflows, debugging WordPress functionality
+- **Expertise**: WordPress-specific selectors, authentication, form validation, database persistence
+
+Example usage:
+```
+Use Task tool with subagent_type: "general-purpose" and reference wordpress-playwright-expert.md to:
+- Test WordPress admin settings form save functionality end-to-end
+- Debug form submission issues and data persistence
+- Validate WordPress admin interface interactions
+- Test plugin activation/deactivation workflows
+- Create comprehensive E2E test suites for WordPress functionality
+```
+
+### AI Validation Expert
+- **Specialization**: Multi-AI provider integration and content validation
+- **Use when**: Testing AI responses, provider switching, content safety, rate limiting
+- **Expertise**: OpenAI/Anthropic/Google AI testing, content quality validation, safety filters
+
+Example usage:
+```
+Use Task tool with subagent_type: "general-purpose" and reference ai-validation-expert.md to:
 - Validate AI provider response formatting and content quality
 - Test content safety filters and prompt injection prevention
 - Verify AI provider switching and fallback mechanisms
 - Check rate limiting and quota management functionality
-- Validate content improvement suggestions and approval workflows
+- Test multi-provider content generation workflows
 ```
 
-### Performance Testing Agent
-- **Subagent**: `performance-testing-agent` 
-- **Specialization**: Performance monitoring, caching, database optimization
-- **Use when**: Testing performance, analyzing bottlenecks, validating caching
-- **Access**: Performance metrics, caching systems, database queries
+### Performance Testing Expert
+- **Specialization**: WordPress performance optimization and load testing
+- **Use when**: Analyzing bottlenecks, testing caching, database optimization, scalability testing
+- **Expertise**: Database queries, Redis caching, memory monitoring, resource optimization
 
 Example usage:
 ```
-Use Task tool with subagent_type: "performance-testing-agent" to:
+Use Task tool with subagent_type: "general-purpose" and reference performance-testing-expert.md to:
 - Analyze WordPress database query performance and optimization
 - Test caching systems (Redis, WordPress transients) under load
-- Validate rate limiting effectiveness and user experience
 - Monitor memory usage during AI content generation
-- Test plugin performance impact on WordPress admin and frontend
+- Validate rate limiting effectiveness and user experience
+- Implement performance monitoring and alerting systems
 ```
 
 ## Architecture Overview
@@ -150,6 +168,12 @@ npm run docker:down
 ## File Structure
 ```
 /
+├── .claude/                        # Claude Code agent definitions
+│   └── agents/                     # Specialized subagent expertise
+│       ├── wordpress-developer-expert.md    # WordPress development expert
+│       ├── wordpress-playwright-expert.md   # WordPress E2E testing expert
+│       ├── ai-validation-expert.md          # AI provider validation expert
+│       └── performance-testing-expert.md    # Performance optimization expert
 ├── wp-content-flow/                 # WordPress plugin directory
 │   ├── wp-content-flow.php         # Main plugin file
 │   ├── includes/                   # PHP classes
@@ -169,6 +193,7 @@ npm run docker:down
 │   ├── blocks/                     # Block editor tests
 │   ├── workflows/                  # Content workflow tests
 │   └── smoke-tests/                # Critical path tests
+├── tmp/                            # Screenshots and documentation
 ├── context7.config.js              # Context7 debugging configuration
 ├── playwright.config.js           # Playwright test configuration
 └── docker-compose.yml             # Development environment
@@ -176,7 +201,8 @@ npm run docker:down
 
 ## Important Notes
 
-- **Always use specialized subagents** for domain-specific work
+- **Use specialized subagents in .claude/agents/** for domain-specific work via general-purpose Task tool
+- **Reference expert knowledge** from wordpress-developer-expert, wordpress-playwright-expert, ai-validation-expert, and performance-testing-expert
 - **Follow WordPress coding standards** and security best practices
 - **Test across multiple user roles** (admin, editor, author, contributor)
 - **Validate AI provider switching** and fallback mechanisms
