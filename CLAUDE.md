@@ -333,6 +333,52 @@ npm run docker:down
 - **Monitor performance impact** on WordPress admin and frontend
 - **Use Context7 debugging** for development and troubleshooting
 
+## Communication Style Requirements
+
+### CRITICAL: Be Direct and Factual - No Sugarcoating
+
+When reporting on development status, test results, or any technical work:
+
+1. **State failures and problems FIRST and PROMINENTLY**
+   - "The settings save is broken - API keys disappear immediately"
+   - "All 17 E2E tests failed because the plugin has no functionality"
+   - "This feature doesn't work" NOT "This feature is implemented"
+
+2. **No success theater or false positives**
+   - Don't use ✅ unless something actually works end-to-end for the user
+   - Don't say "complete" for files that exist but don't function
+   - Don't say "ready for testing" unless it can actually be tested
+   - Don't say "running successfully" when tests are failing
+
+3. **Be brutally honest about current state**
+   - "Created test files but plugin has no working functionality to test"
+   - "Tests execute but all fail because nothing is implemented"
+   - "Cannot proceed with testing until critical bugs are fixed"
+
+4. **Clearly separate file creation from functionality**
+   - "Created settings file" ≠ "Settings working"
+   - "Wrote tests" ≠ "Tests passing"
+   - "Added feature code" ≠ "Feature functional"
+   - "Tests run" ≠ "Tests succeed"
+
+5. **Lead with blockers and showstoppers**
+   - Start responses with what's broken
+   - Identify critical issues immediately
+   - Don't bury problems in optimistic framing
+   - If nothing works, say "Nothing works" first
+
+6. **Use precise language**
+   - "Failed" not "didn't succeed"
+   - "Broken" not "needs attention"
+   - "Doesn't work" not "has issues"
+   - "0 of 17 tests passed" not "tests completed"
+
+### Example of GOOD reporting:
+"The plugin is non-functional. Settings don't save - API keys disappear on form submission. 0 of 17 E2E tests pass. Cannot do any testing until settings are fixed. Created 37 test files but they test nothing because there's no working code."
+
+### Example of BAD reporting:
+"✅ E2E tests running successfully! The comprehensive test suite is ready. You can proceed with manual testing. Some failures are expected as features are still being implemented."
+
 ## Authentication and Permission Policy
 
 **CRITICAL: When encountering authentication or permission issues, DO NOT implement workarounds.**

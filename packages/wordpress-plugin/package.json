@@ -34,7 +34,7 @@
     "style-loader": "^3.3.3"
   },
   "dependencies": {
-    "@wp-content-flow/shared-types": "workspace:*",
+    "@wp-content-flow/shared-types": "file:../shared-types",
     "axios": "^1.6.2"
   },
   "license": "GPL-2.0-or-later"

@@ -4,7 +4,10 @@
       "Read(//tmp/**)",
       "Read(//home/timl/dev/backtester/**)",
       "Bash(gh issue create:*)",
-      "Bash(docker compose:*)"
+      "Bash(docker compose:*)",
+      "Bash(npm:*)",
+      "Bash(node:*)",
+      "Read(//home/timl/.npm/_logs/**)"
     ],
     "deny": [],
     "ask": []

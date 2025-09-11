@@ -103,7 +103,7 @@ async function cleanupTestData() {
     
     try {
       await page.fill('#user_login', 'admin');
-      await page.fill('#user_pass', 'admin123!@#');
+      await page.fill('#user_pass', '!3cTXkh)9iDHhV5o*N');
       await page.click('#wp-submit');
       await page.waitForSelector('#wpadminbar', { timeout: 10000 });
     } catch (loginError) {

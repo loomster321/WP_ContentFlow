@@ -230,33 +230,73 @@ class WP_Content_Flow_Settings_Page {
      * Sanitize settings
      */
     public function sanitize_settings($input) {
-        $sanitized = array();
+        error_log('WP Content Flow: sanitize_settings called with input: ' . print_r($input, true));
         
-        // Sanitize and encrypt API keys
-        if (isset($input['openai_api_key'])) {
+        // Get existing settings to preserve unchanged values
+        $existing = get_option($this->option_name, array());
+        $sanitized = $existing; // Start with existing values
+        
+        // Handle OpenAI API key
+        if (isset($input['openai_api_key']) && !empty(trim($input['openai_api_key']))) {
             $clean_key = sanitize_text_field($input['openai_api_key']);
-            if (!empty($clean_key)) {
-                $sanitized['openai_api_key_encrypted'] = $this->encrypt_api_key($clean_key);
-                // Remove plain text version
-                unset($sanitized['openai_api_key']);
+            
+            // Check if this is a masked key (contains asterisks)
+            if (strpos($clean_key, '*') === false) {
+                // This is a new key, encrypt it
+                $encrypted = $this->encrypt_api_key($clean_key);
+                if (!empty($encrypted)) {
+                    $sanitized['openai_api_key_encrypted'] = $encrypted;
+                    // Store plain key temporarily for immediate display (will be removed on next save)
+                    $sanitized['openai_api_key'] = $clean_key;
+                    error_log('WP Content Flow: OpenAI key encrypted and stored');
+                } else {
+                    error_log('WP Content Flow: OpenAI key encryption failed');
+                }
+            } else {
+                // This is a masked key, don't change the stored value
+                error_log('WP Content Flow: OpenAI key unchanged (masked value submitted)');
             }
         }
         
-        if (isset($input['anthropic_api_key'])) {
+        // Handle Anthropic API key
+        if (isset($input['anthropic_api_key']) && !empty(trim($input['anthropic_api_key']))) {
             $clean_key = sanitize_text_field($input['anthropic_api_key']);
-            if (!empty($clean_key)) {
-                $sanitized['anthropic_api_key_encrypted'] = $this->encrypt_api_key($clean_key);
-                // Remove plain text version
-                unset($sanitized['anthropic_api_key']);
+            
+            // Check if this is a masked key (contains asterisks)
+            if (strpos($clean_key, '*') === false) {
+                // This is a new key, encrypt it
+                $encrypted = $this->encrypt_api_key($clean_key);
+                if (!empty($encrypted)) {
+                    $sanitized['anthropic_api_key_encrypted'] = $encrypted;
+                    // Store plain key temporarily for immediate display
+                    $sanitized['anthropic_api_key'] = $clean_key;
+                    error_log('WP Content Flow: Anthropic key encrypted and stored');
+                } else {
+                    error_log('WP Content Flow: Anthropic key encryption failed');
+                }
+            } else {
+                error_log('WP Content Flow: Anthropic key unchanged (masked value submitted)');
             }
         }
         
-        if (isset($input['google_api_key'])) {
+        // Handle Google AI API key
+        if (isset($input['google_api_key']) && !empty(trim($input['google_api_key']))) {
             $clean_key = sanitize_text_field($input['google_api_key']);
-            if (!empty($clean_key)) {
-                $sanitized['google_ai_api_key_encrypted'] = $this->encrypt_api_key($clean_key);
-                // Remove plain text version
-                unset($sanitized['google_api_key']);
+            
+            // Check if this is a masked key (contains asterisks)
+            if (strpos($clean_key, '*') === false) {
+                // This is a new key, encrypt it
+                $encrypted = $this->encrypt_api_key($clean_key);
+                if (!empty($encrypted)) {
+                    $sanitized['google_ai_api_key_encrypted'] = $encrypted;
+                    // Store plain key temporarily for immediate display
+                    $sanitized['google_api_key'] = $clean_key;
+                    error_log('WP Content Flow: Google AI key encrypted and stored');
+                } else {
+                    error_log('WP Content Flow: Google AI key encryption failed');
+                }
+            } else {
+                error_log('WP Content Flow: Google AI key unchanged (masked value submitted)');
             }
         }
         
@@ -265,6 +305,7 @@ class WP_Content_Flow_Settings_Page {
             $allowed_providers = array('openai', 'anthropic', 'google');
             $sanitized['default_ai_provider'] = in_array($input['default_ai_provider'], $allowed_providers) 
                 ? $input['default_ai_provider'] : 'openai';
+            error_log('WP Content Flow: Default provider set to: ' . $sanitized['default_ai_provider']);
         }
         
         // Handle checkbox: set to true if present, false if not present
@@ -276,7 +317,13 @@ class WP_Content_Flow_Settings_Page {
             if ($sanitized['requests_per_minute'] < 1) {
                 $sanitized['requests_per_minute'] = 10;
             }
+            error_log('WP Content Flow: Requests per minute set to: ' . $sanitized['requests_per_minute']);
         }
+        
+        error_log('WP Content Flow: Final sanitized settings: ' . print_r($sanitized, true));
+        
+        // Set a transient to show success message
+        set_transient('wp_content_flow_settings_saved', true, 5);
         
         return $sanitized;
     }
@@ -592,21 +639,41 @@ class WP_Content_Flow_Settings_Page {
      */
     private function encrypt_api_key($key) {
         if (empty($key)) {
+            error_log('WP Content Flow: Empty key provided to encrypt_api_key');
             return '';
         }
         
-        // Use WordPress salts for encryption key base
-        $encryption_key = wp_salt('secure_auth') . wp_salt('logged_in');
-        $encryption_key = hash('sha256', $encryption_key);
-        
-        // Generate a random IV
-        $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length('aes-256-cbc'));
-        
-        // Encrypt the API key
-        $encrypted = openssl_encrypt($key, 'aes-256-cbc', $encryption_key, 0, $iv);
-        
-        // Return base64 encoded IV + encrypted data
-        return base64_encode($iv . $encrypted);
+        try {
+            // Use WordPress salts for encryption key base
+            $encryption_key = wp_salt('secure_auth') . wp_salt('logged_in');
+            $encryption_key = hash('sha256', $encryption_key);
+            
+            // Generate a random IV
+            $iv_length = openssl_cipher_iv_length('aes-256-cbc');
+            $iv = openssl_random_pseudo_bytes($iv_length);
+            
+            if ($iv === false) {
+                error_log('WP Content Flow: Failed to generate IV for encryption');
+                return '';
+            }
+            
+            // Encrypt the API key
+            $encrypted = openssl_encrypt($key, 'aes-256-cbc', $encryption_key, 0, $iv);
+            
+            if ($encrypted === false) {
+                error_log('WP Content Flow: openssl_encrypt failed');
+                return '';
+            }
+            
+            // Return base64 encoded IV + encrypted data
+            $result = base64_encode($iv . $encrypted);
+            error_log('WP Content Flow: Successfully encrypted key, length: ' . strlen($result));
+            return $result;
+            
+        } catch (Exception $e) {
+            error_log('WP Content Flow: Encryption error: ' . $e->getMessage());
+            return '';
+        }
     }
     
     /**
@@ -614,55 +681,69 @@ class WP_Content_Flow_Settings_Page {
      */
     private function decrypt_api_key($encrypted_key) {
         if (empty($encrypted_key)) {
+            error_log('WP Content Flow: Empty encrypted key provided to decrypt_api_key');
             return '';
         }
         
-        // Use same encryption key as encrypt method
-        $encryption_key = wp_salt('secure_auth') . wp_salt('logged_in');
-        $encryption_key = hash('sha256', $encryption_key);
-        
-        // Decode the encrypted data
-        $data = base64_decode($encrypted_key);
-        if ($data === false) {
+        try {
+            // Use same encryption key as encrypt method
+            $encryption_key = wp_salt('secure_auth') . wp_salt('logged_in');
+            $encryption_key = hash('sha256', $encryption_key);
+            
+            // Decode the encrypted data
+            $data = base64_decode($encrypted_key);
+            if ($data === false) {
+                error_log('WP Content Flow: base64_decode failed in decrypt_api_key');
+                return '';
+            }
+            
+            // Extract IV and encrypted content
+            $iv_length = openssl_cipher_iv_length('aes-256-cbc');
+            if (strlen($data) < $iv_length) {
+                error_log('WP Content Flow: Encrypted data too short, expected at least ' . $iv_length . ' bytes');
+                return '';
+            }
+            
+            $iv = substr($data, 0, $iv_length);
+            $encrypted = substr($data, $iv_length);
+            
+            // Decrypt the API key
+            $decrypted = openssl_decrypt($encrypted, 'aes-256-cbc', $encryption_key, 0, $iv);
+            
+            if ($decrypted === false) {
+                error_log('WP Content Flow: openssl_decrypt failed');
+                return '';
+            }
+            
+            error_log('WP Content Flow: Successfully decrypted key');
+            return $decrypted;
+            
+        } catch (Exception $e) {
+            error_log('WP Content Flow: Decryption error: ' . $e->getMessage());
             return '';
         }
-        
-        // Extract IV and encrypted content
-        $iv_length = openssl_cipher_iv_length('aes-256-cbc');
-        $iv = substr($data, 0, $iv_length);
-        $encrypted = substr($data, $iv_length);
-        
-        // Decrypt the API key
-        $decrypted = openssl_decrypt($encrypted, 'aes-256-cbc', $encryption_key, 0, $iv);
-        
-        return $decrypted;
     }
     
     /**
      * Get API key for display (show partial key if encrypted)
      */
     private function get_api_key_for_display($settings, $provider) {
-        $encrypted_key = $settings[$provider . '_api_key_encrypted'] ?? '';
-        $plain_key = $settings[$provider . '_api_key'] ?? '';
+        error_log('WP Content Flow: get_api_key_for_display for ' . $provider);
         
-        if (!empty($encrypted_key)) {
-            // Show partial encrypted key for security
-            $decrypted = $this->decrypt_api_key($encrypted_key);
-            if (!empty($decrypted)) {
-                // Show first 4 and last 4 characters with asterisks in between
-                if (strlen($decrypted) > 8) {
-                    return substr($decrypted, 0, 4) . str_repeat('*', 20) . substr($decrypted, -4);
-                } else {
-                    return str_repeat('*', strlen($decrypted));
-                }
-            }
+        // First check for plain key (temporary storage)
+        $plain_key = '';
+        if ($provider === 'google_ai') {
+            $plain_key = $settings['google_api_key'] ?? '';
+        } else {
+            $plain_key = $settings[$provider . '_api_key'] ?? '';
         }
         
-        // If we have a plain key but no encrypted version, mask it for security
-        if (!empty($plain_key)) {
-            // Auto-encrypt plain text keys for future security
-            $this->migrate_plain_key_to_encrypted($provider, $plain_key);
-            
+        // Then check for encrypted key
+        $encrypted_key = $settings[$provider . '_api_key_encrypted'] ?? '';
+        
+        // If we have a plain key, show masked version
+        if (!empty($plain_key) && strpos($plain_key, '*') === false) {
+            error_log('WP Content Flow: Found plain key for ' . $provider);
             // Show masked version
             if (strlen($plain_key) > 8) {
                 return substr($plain_key, 0, 4) . str_repeat('*', 20) . substr($plain_key, -4);
@@ -671,6 +752,24 @@ class WP_Content_Flow_Settings_Page {
             }
         }
         
+        // If we have an encrypted key, decrypt and show masked version
+        if (!empty($encrypted_key)) {
+            error_log('WP Content Flow: Found encrypted key for ' . $provider);
+            $decrypted = $this->decrypt_api_key($encrypted_key);
+            if (!empty($decrypted)) {
+                error_log('WP Content Flow: Successfully decrypted key for ' . $provider);
+                // Show first 4 and last 4 characters with asterisks in between
+                if (strlen($decrypted) > 8) {
+                    return substr($decrypted, 0, 4) . str_repeat('*', 20) . substr($decrypted, -4);
+                } else {
+                    return str_repeat('*', strlen($decrypted));
+                }
+            } else {
+                error_log('WP Content Flow: Failed to decrypt key for ' . $provider);
+            }
+        }
+        
+        error_log('WP Content Flow: No key found for ' . $provider);
         return '';
     }
     

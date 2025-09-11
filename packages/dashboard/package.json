@@ -12,7 +12,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@wp-content-flow/shared-types": "workspace:*",
+    "@wp-content-flow/shared-types": "file:../shared-types",
     "next": "^14.0.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
