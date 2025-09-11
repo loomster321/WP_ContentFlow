@@ -379,6 +379,40 @@ When reporting on development status, test results, or any technical work:
 ### Example of BAD reporting:
 "✅ E2E tests running successfully! The comprehensive test suite is ready. You can proceed with manual testing. Some failures are expected as features are still being implemented."
 
+## Testing Requirements - DO NOT ASK USER TO TEST
+
+### CRITICAL: Test Everything Yourself First
+
+**Before EVER asking the user to test something:**
+
+1. **Write and run Playwright tests for ALL changes**
+   - Settings save functionality
+   - Form field persistence
+   - UI state changes
+   - API integrations
+   - Any user-facing features
+
+2. **Only report what you've verified**
+   - "Tested with Playwright: Settings save works" NOT "Please test if settings save"
+   - "Playwright test confirms: Checkbox persists" NOT "Checkbox should persist"
+   - "E2E test failed: Feature broken" NOT "Try this and see if it works"
+
+3. **If you can't test it, say so**
+   - "Cannot test without API credentials"
+   - "Requires manual database verification"
+   - "Need user confirmation for production data"
+
+4. **Never waste user's time**
+   - Don't ask user to click buttons you can click with Playwright
+   - Don't ask user to verify UI states you can check programmatically
+   - Don't ask user to test basic functionality you should test yourself
+
+### Example of GOOD testing:
+"Ran Playwright test for settings save. Result: Checkbox value saves to database but doesn't display correctly on reload. Issue identified in line 562 of settings file."
+
+### Example of BAD testing:
+"Fixed the checkbox issue. Please go to the settings page and check if the cache checkbox persists after saving."
+
 ## Authentication and Permission Policy
 
 **CRITICAL: When encountering authentication or permission issues, DO NOT implement workarounds.**

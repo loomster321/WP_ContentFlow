@@ -232,9 +232,20 @@ class WP_Content_Flow_Settings_Page {
     public function sanitize_settings($input) {
         error_log('WP Content Flow: sanitize_settings called with input: ' . print_r($input, true));
         
-        // Get existing settings to preserve unchanged values
+        // Get existing settings but only preserve encrypted keys
         $existing = get_option($this->option_name, array());
-        $sanitized = $existing; // Start with existing values
+        $sanitized = array();
+        
+        // Only preserve encrypted API keys from existing settings
+        if (isset($existing['openai_api_key_encrypted'])) {
+            $sanitized['openai_api_key_encrypted'] = $existing['openai_api_key_encrypted'];
+        }
+        if (isset($existing['anthropic_api_key_encrypted'])) {
+            $sanitized['anthropic_api_key_encrypted'] = $existing['anthropic_api_key_encrypted'];
+        }
+        if (isset($existing['google_ai_api_key_encrypted'])) {
+            $sanitized['google_ai_api_key_encrypted'] = $existing['google_ai_api_key_encrypted'];
+        }
         
         // Handle OpenAI API key
         if (isset($input['openai_api_key']) && !empty(trim($input['openai_api_key']))) {
@@ -246,9 +257,9 @@ class WP_Content_Flow_Settings_Page {
                 $encrypted = $this->encrypt_api_key($clean_key);
                 if (!empty($encrypted)) {
                     $sanitized['openai_api_key_encrypted'] = $encrypted;
-                    // Store plain key temporarily for immediate display (will be removed on next save)
-                    $sanitized['openai_api_key'] = $clean_key;
-                    error_log('WP Content Flow: OpenAI key encrypted and stored');
+                    // NEVER store plain text key - security vulnerability!
+                    unset($sanitized['openai_api_key']);
+                    error_log('WP Content Flow: OpenAI key encrypted and stored (encrypted only)');
                 } else {
                     error_log('WP Content Flow: OpenAI key encryption failed');
                 }
@@ -268,9 +279,9 @@ class WP_Content_Flow_Settings_Page {
                 $encrypted = $this->encrypt_api_key($clean_key);
                 if (!empty($encrypted)) {
                     $sanitized['anthropic_api_key_encrypted'] = $encrypted;
-                    // Store plain key temporarily for immediate display
-                    $sanitized['anthropic_api_key'] = $clean_key;
-                    error_log('WP Content Flow: Anthropic key encrypted and stored');
+                    // NEVER store plain text key - security vulnerability!
+                    unset($sanitized['anthropic_api_key']);
+                    error_log('WP Content Flow: Anthropic key encrypted and stored (encrypted only)');
                 } else {
                     error_log('WP Content Flow: Anthropic key encryption failed');
                 }
@@ -289,9 +300,9 @@ class WP_Content_Flow_Settings_Page {
                 $encrypted = $this->encrypt_api_key($clean_key);
                 if (!empty($encrypted)) {
                     $sanitized['google_ai_api_key_encrypted'] = $encrypted;
-                    // Store plain key temporarily for immediate display
-                    $sanitized['google_api_key'] = $clean_key;
-                    error_log('WP Content Flow: Google AI key encrypted and stored');
+                    // NEVER store plain text key - security vulnerability!
+                    unset($sanitized['google_api_key']);
+                    error_log('WP Content Flow: Google AI key encrypted and stored (encrypted only)');
                 } else {
                     error_log('WP Content Flow: Google AI key encryption failed');
                 }
@@ -308,8 +319,11 @@ class WP_Content_Flow_Settings_Page {
             error_log('WP Content Flow: Default provider set to: ' . $sanitized['default_ai_provider']);
         }
         
-        // Handle checkbox: set to true if present, false if not present
-        $sanitized['cache_enabled'] = isset($input['cache_enabled']) ? true : false;
+        // Handle checkbox: ALWAYS update based on form submission
+        // Checkboxes are only sent if checked, so absence means unchecked
+        // Since this is a form submission, we KNOW the checkbox field exists on the form
+        // Therefore we can definitively set it based on presence/absence
+        $sanitized['cache_enabled'] = isset($input['cache_enabled']) && $input['cache_enabled'] ? true : false;
         error_log('WP Content Flow: Cache enabled checkbox - Input present: ' . (isset($input['cache_enabled']) ? 'YES' : 'NO') . ', Setting to: ' . ($sanitized['cache_enabled'] ? 'true' : 'false'));
         
         if (isset($input['requests_per_minute'])) {
@@ -606,7 +620,8 @@ class WP_Content_Flow_Settings_Page {
      */
     public function render_cache_enabled_field() {
         $settings = get_option($this->option_name, array());
-        $value = isset($settings['cache_enabled']) ? $settings['cache_enabled'] : true;
+        // Fix: Properly cast to boolean and default to false not true
+        $value = isset($settings['cache_enabled']) ? (bool)$settings['cache_enabled'] : false;
         
         // Debug information for troubleshooting
         echo '<!-- WP Content Flow Debug: Cache enabled value = ' . ($value ? 'true' : 'false') . ' -->';
@@ -730,27 +745,8 @@ class WP_Content_Flow_Settings_Page {
     private function get_api_key_for_display($settings, $provider) {
         error_log('WP Content Flow: get_api_key_for_display for ' . $provider);
         
-        // First check for plain key (temporary storage)
-        $plain_key = '';
-        if ($provider === 'google_ai') {
-            $plain_key = $settings['google_api_key'] ?? '';
-        } else {
-            $plain_key = $settings[$provider . '_api_key'] ?? '';
-        }
-        
-        // Then check for encrypted key
+        // ONLY check for encrypted key - never look for plain text
         $encrypted_key = $settings[$provider . '_api_key_encrypted'] ?? '';
-        
-        // If we have a plain key, show masked version
-        if (!empty($plain_key) && strpos($plain_key, '*') === false) {
-            error_log('WP Content Flow: Found plain key for ' . $provider);
-            // Show masked version
-            if (strlen($plain_key) > 8) {
-                return substr($plain_key, 0, 4) . str_repeat('*', 20) . substr($plain_key, -4);
-            } else {
-                return str_repeat('*', strlen($plain_key));
-            }
-        }
         
         // If we have an encrypted key, decrypt and show masked version
         if (!empty($encrypted_key)) {
