@@ -1,60 +1,64 @@
 <?php
 /**
- * Plugin activation script for WP Content Flow
- * Activates the plugin and displays current plugin status
+ * Activate WP Content Flow Plugin
  */
 
-// WordPress bootstrap
-define('WP_USE_THEMES', false);
-require_once('/var/www/html/wp-config.php');
+define('ABSPATH', '/var/www/html/');
+require_once ABSPATH . 'wp-config.php';
+require_once ABSPATH . 'wp-settings.php';
 
-// Include admin functions
-require_once(ABSPATH . 'wp-admin/includes/plugin.php');
+echo "🔧 Activating WP Content Flow Plugin...\n";
 
-// Check if plugin file exists
+// Check if plugin exists
 $plugin_file = 'wp-content-flow/wp-content-flow.php';
 $plugin_path = WP_PLUGIN_DIR . '/' . $plugin_file;
 
-echo "=== WP Content Flow Plugin Activation ===\n";
-echo "Plugin file: $plugin_file\n";
-echo "Plugin path: $plugin_path\n";
-echo "Plugin exists: " . (file_exists($plugin_path) ? 'YES' : 'NO') . "\n";
-
 if (!file_exists($plugin_path)) {
-    echo "ERROR: Plugin file not found!\n";
+    echo "❌ Plugin file not found: $plugin_path\n";
     exit(1);
 }
 
-// Get plugin data
-$plugin_data = get_plugin_data($plugin_path);
-echo "Plugin Name: " . $plugin_data['Name'] . "\n";
-echo "Plugin Version: " . $plugin_data['Version'] . "\n";
+echo "✅ Plugin file exists: $plugin_path\n";
+
+// Get current active plugins
+$active_plugins = get_option('active_plugins', array());
+echo "Currently active plugins: " . count($active_plugins) . "\n";
 
 // Check if already active
-if (is_plugin_active($plugin_file)) {
-    echo "Status: Plugin is already ACTIVE\n";
+if (in_array($plugin_file, $active_plugins)) {
+    echo "✅ Plugin is already active!\n";
 } else {
-    echo "Status: Plugin is INACTIVE\n";
+    echo "🔧 Plugin is inactive, activating...\n";
     
-    // Activate the plugin
-    echo "Activating plugin...\n";
-    $result = activate_plugin($plugin_file);
+    // Add to active plugins
+    $active_plugins[] = $plugin_file;
     
-    if (is_wp_error($result)) {
-        echo "ERROR: Failed to activate plugin: " . $result->get_error_message() . "\n";
-        exit(1);
+    // Update option
+    $result = update_option('active_plugins', $active_plugins);
+    
+    if ($result) {
+        echo "✅ Plugin activated successfully!\n";
+        
+        // Verify activation
+        $updated_active = get_option('active_plugins', array());
+        if (in_array($plugin_file, $updated_active)) {
+            echo "✅ Activation verified in database\n";
+        } else {
+            echo "❌ Activation not verified in database\n";
+        }
     } else {
-        echo "SUCCESS: Plugin activated successfully!\n";
+        echo "❌ Failed to update active_plugins option\n";
     }
 }
 
-// List all plugins
-echo "\n=== All Installed Plugins ===\n";
-$all_plugins = get_plugins();
-foreach ($all_plugins as $plugin_slug => $plugin_info) {
-    $status = is_plugin_active($plugin_slug) ? 'ACTIVE' : 'inactive';
-    echo sprintf("- %s (%s) - %s\n", $plugin_info['Name'], $plugin_info['Version'], $status);
+// Try to load the plugin to check for errors
+echo "\n🔍 Testing plugin loading...\n";
+try {
+    include_once $plugin_path;
+    echo "✅ Plugin file loaded without fatal errors\n";
+} catch (Exception $e) {
+    echo "❌ Plugin loading error: " . $e->getMessage() . "\n";
 }
 
-echo "\n=== Plugin activation complete ===\n";
+echo "\n🏁 Plugin activation complete\n";
 ?>

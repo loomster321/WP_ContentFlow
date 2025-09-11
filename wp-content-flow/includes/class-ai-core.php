@@ -77,10 +77,10 @@ class WP_Content_Flow_AI_Core {
                 'file' => 'includes/providers/class-anthropic-provider.php',
                 'enabled' => true
             ),
-            'google' => array(
+            'google-ai' => array(
                 'name' => 'Google AI',
-                'class' => 'WP_Content_Flow_Google_Provider',
-                'file' => 'includes/providers/class-google-provider.php',
+                'class' => 'WP_Content_Flow_Google_AI_Provider',
+                'file' => 'includes/providers/class-google-ai-provider.php',
                 'enabled' => true
             ),
             'azure' => array(

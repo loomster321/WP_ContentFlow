@@ -53,8 +53,15 @@ class WP_Content_Flow_Anthropic_Provider {
      * Load API key from settings
      */
     private function load_api_key() {
-        $settings = get_option( 'wp_content_flow_settings', array() );
-        $this->api_key = $settings['anthropic_api_key'] ?? '';
+        // Try to get decrypted API key from settings page class
+        if ( class_exists( 'WP_Content_Flow_Settings_Page' ) ) {
+            $settings_page = new WP_Content_Flow_Settings_Page();
+            $this->api_key = $settings_page->get_decrypted_api_key( 'anthropic' );
+        } else {
+            // Fallback to direct settings access
+            $settings = get_option( 'wp_content_flow_settings', array() );
+            $this->api_key = $settings['anthropic_api_key'] ?? '';
+        }
         
         // Allow filtering of API key
         $this->api_key = apply_filters( 'wp_content_flow_anthropic_api_key', $this->api_key );

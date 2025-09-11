@@ -35,10 +35,21 @@ spl_autoload_register( function ( $class_name ) {
     if ( strpos( $class_name, 'WP_Content_Flow' ) === 0 ) {
         $class_file = str_replace( '_', '-', strtolower( $class_name ) );
         $class_file = str_replace( 'wp-content-flow-', '', $class_file );
-        $file_path = WP_CONTENT_FLOW_PLUGIN_DIR . 'includes/class-' . $class_file . '.php';
         
-        if ( file_exists( $file_path ) ) {
-            require_once $file_path;
+        // Try different directory structures
+        $possible_paths = [
+            WP_CONTENT_FLOW_PLUGIN_DIR . 'includes/class-' . $class_file . '.php',
+            WP_CONTENT_FLOW_PLUGIN_DIR . 'includes/admin/class-' . $class_file . '.php',
+            WP_CONTENT_FLOW_PLUGIN_DIR . 'includes/api/class-' . $class_file . '.php',
+            WP_CONTENT_FLOW_PLUGIN_DIR . 'includes/models/class-' . $class_file . '.php',
+            WP_CONTENT_FLOW_PLUGIN_DIR . 'includes/providers/class-' . $class_file . '.php',
+        ];
+        
+        foreach ( $possible_paths as $file_path ) {
+            if ( file_exists( $file_path ) ) {
+                require_once $file_path;
+                break;
+            }
         }
     }
 } );
@@ -125,7 +136,16 @@ class WP_Content_Flow {
         // Core classes
         require_once WP_CONTENT_FLOW_PLUGIN_DIR . 'includes/class-ai-core.php';
         require_once WP_CONTENT_FLOW_PLUGIN_DIR . 'includes/class-workflow-engine.php';
+        require_once WP_CONTENT_FLOW_PLUGIN_DIR . 'includes/class-workflow-automation-engine.php';
+        require_once WP_CONTENT_FLOW_PLUGIN_DIR . 'includes/class-collaboration-manager.php';
+        require_once WP_CONTENT_FLOW_PLUGIN_DIR . 'includes/class-audit-trail.php';
+        require_once WP_CONTENT_FLOW_PLUGIN_DIR . 'includes/class-user-capabilities.php';
         require_once WP_CONTENT_FLOW_PLUGIN_DIR . 'includes/class-content-manager.php';
+        
+        // Provider classes
+        require_once WP_CONTENT_FLOW_PLUGIN_DIR . 'includes/providers/class-openai-provider.php';
+        require_once WP_CONTENT_FLOW_PLUGIN_DIR . 'includes/providers/class-anthropic-provider.php';
+        require_once WP_CONTENT_FLOW_PLUGIN_DIR . 'includes/providers/class-google-ai-provider.php';
         
         // Admin classes
         if ( is_admin() ) {
@@ -147,7 +167,19 @@ class WP_Content_Flow {
         
         // Initialize core components
         WP_Content_Flow_Workflow_Engine::get_instance();
+        WP_Content_Flow_Workflow_Automation_Engine::get_instance();
+        WP_Content_Flow_Collaboration_Manager::get_instance();
+        WP_Content_Flow_Audit_Trail::get_instance();
+        new WP_Content_Flow_User_Capabilities();
         WP_Content_Flow_Content_Manager::get_instance();
+        
+        // Initialize AI providers
+        new WP_Content_Flow_OpenAI_Provider();
+        new WP_Content_Flow_Anthropic_Provider();
+        new WP_Content_Flow_Google_AI_Provider();
+        
+        // Initialize REST API
+        new WP_Content_Flow_REST_API();
         
         // Initialize admin components
         if ( is_admin() ) {
@@ -155,6 +187,7 @@ class WP_Content_Flow {
         }
         
         // Initialize block editor components
+        add_action( 'init', array( $this, 'register_blocks' ) );
         add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_block_editor_assets' ) );
         add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_frontend_assets' ) );
         
@@ -165,13 +198,89 @@ class WP_Content_Flow {
     }
     
     /**
+     * Register Gutenberg blocks
+     */
+    public function register_blocks() {
+        // Register AI Text Generator block
+        register_block_type( 'wp-content-flow/ai-text', array(
+            'editor_script' => 'wp-content-flow-ai-text-block',
+            'editor_style'  => 'wp-content-flow-editor',
+            'style'         => 'wp-content-flow-frontend',
+            'attributes'    => array(
+                'prompt' => array(
+                    'type'    => 'string',
+                    'default' => '',
+                ),
+                'content' => array(
+                    'type'    => 'string',
+                    'default' => '',
+                ),
+                'workflowId' => array(
+                    'type'    => 'number',
+                    'default' => 0,
+                ),
+                'isGenerating' => array(
+                    'type'    => 'boolean',
+                    'default' => false,
+                ),
+                'aiProvider' => array(
+                    'type'    => 'string',
+                    'default' => 'openai',
+                ),
+                'model' => array(
+                    'type'    => 'string',
+                    'default' => '',
+                ),
+                'temperature' => array(
+                    'type'    => 'number',
+                    'default' => 0.7,
+                ),
+                'maxTokens' => array(
+                    'type'    => 'number',
+                    'default' => 1024,
+                ),
+            ),
+            'render_callback' => array( $this, 'render_ai_text_block' ),
+        ) );
+    }
+    
+    /**
+     * Render AI Text Generator block on frontend
+     *
+     * @param array $attributes Block attributes
+     * @return string Block HTML
+     */
+    public function render_ai_text_block( $attributes ) {
+        $content = $attributes['content'] ?? '';
+        
+        if ( empty( $content ) ) {
+            return '';
+        }
+        
+        return sprintf(
+            '<div class="wp-content-flow-ai-generated-content">%s</div>',
+            wp_kses_post( $content )
+        );
+    }
+    
+    /**
      * Enqueue block editor assets
      */
     public function enqueue_block_editor_assets() {
+        // Enqueue the AI Text Generator block script
+        wp_enqueue_script(
+            'wp-content-flow-ai-text-block',
+            WP_CONTENT_FLOW_PLUGIN_URL . 'blocks/ai-text-generator/index.js',
+            array( 'wp-blocks', 'wp-element', 'wp-editor', 'wp-components', 'wp-data', 'wp-i18n', 'wp-api-fetch', 'wp-icons' ),
+            WP_CONTENT_FLOW_VERSION,
+            true
+        );
+        
+        // Enqueue the main blocks script for sidebar panels
         wp_enqueue_script(
             'wp-content-flow-blocks',
             WP_CONTENT_FLOW_PLUGIN_URL . 'assets/js/blocks.js',
-            array( 'wp-blocks', 'wp-element', 'wp-editor', 'wp-components', 'wp-data' ),
+            array( 'wp-blocks', 'wp-element', 'wp-editor', 'wp-components', 'wp-data', 'wp-plugins', 'wp-edit-post' ),
             WP_CONTENT_FLOW_VERSION,
             true
         );
@@ -268,6 +377,10 @@ class WP_Content_Flow {
         require_once WP_CONTENT_FLOW_PLUGIN_DIR . 'includes/database/schema-workflows.php';
         require_once WP_CONTENT_FLOW_PLUGIN_DIR . 'includes/database/schema-suggestions.php';
         require_once WP_CONTENT_FLOW_PLUGIN_DIR . 'includes/database/schema-history.php';
+        require_once WP_CONTENT_FLOW_PLUGIN_DIR . 'includes/database/schema-templates.php';
+        require_once WP_CONTENT_FLOW_PLUGIN_DIR . 'includes/database/schema-approval-assignments.php';
+        require_once WP_CONTENT_FLOW_PLUGIN_DIR . 'includes/database/schema-shared-queues.php';
+        require_once WP_CONTENT_FLOW_PLUGIN_DIR . 'includes/database/schema-audit-trail.php';
         
         // Create tables in dependency order
         $table_creation_results = array();
@@ -275,6 +388,10 @@ class WP_Content_Flow {
         $table_creation_results['workflows'] = wp_content_flow_create_workflows_table();
         $table_creation_results['suggestions'] = wp_content_flow_create_suggestions_table();
         $table_creation_results['history'] = wp_content_flow_create_history_table();
+        $table_creation_results['templates'] = wp_content_flow_create_workflow_templates_table();
+        $table_creation_results['approval_assignments'] = wp_content_flow_create_approval_assignments_table();
+        $table_creation_results['shared_queues'] = wp_content_flow_create_shared_queues_table();
+        $table_creation_results['audit_trail'] = wp_content_flow_create_audit_trail_table();
         
         // Log results if debug enabled
         if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
@@ -329,8 +446,16 @@ class WP_Content_Flow {
         require_once WP_CONTENT_FLOW_PLUGIN_DIR . 'includes/database/schema-workflows.php';
         require_once WP_CONTENT_FLOW_PLUGIN_DIR . 'includes/database/schema-suggestions.php';
         require_once WP_CONTENT_FLOW_PLUGIN_DIR . 'includes/database/schema-history.php';
+        require_once WP_CONTENT_FLOW_PLUGIN_DIR . 'includes/database/schema-templates.php';
+        require_once WP_CONTENT_FLOW_PLUGIN_DIR . 'includes/database/schema-approval-assignments.php';
+        require_once WP_CONTENT_FLOW_PLUGIN_DIR . 'includes/database/schema-shared-queues.php';
+        require_once WP_CONTENT_FLOW_PLUGIN_DIR . 'includes/database/schema-audit-trail.php';
         
         // Drop tables in reverse dependency order (foreign keys)
+        wp_content_flow_drop_audit_trail_table();
+        wp_content_flow_drop_shared_queues_table();
+        wp_content_flow_drop_approval_assignments_table();
+        wp_content_flow_drop_workflow_templates_table();
         wp_content_flow_drop_history_table();
         wp_content_flow_drop_suggestions_table();
         wp_content_flow_drop_workflows_table();

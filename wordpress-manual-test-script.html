@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WordPress WP Content Flow Plugin E2E Manual Test Suite</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f1f1f1;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-header {
+            background: #0073aa;
+            color: white;
+            padding: 15px 20px;
+            margin: -20px -20px 20px -20px;
+            border-radius: 8px 8px 0 0;
+        }
+        .test-step {
+            margin: 15px 0;
+            padding: 10px;
+            border-left: 4px solid #ddd;
+            background: #f9f9f9;
+        }
+        .test-step.success {
+            border-left-color: #4caf50;
+            background: #f1f8e9;
+        }
+        .test-step.fail {
+            border-left-color: #f44336;
+            background: #fce4ec;
+        }
+        .test-step.warning {
+            border-left-color: #ff9800;
+            background: #fff8e1;
+        }
+        button {
+            background: #0073aa;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #005a87;
+        }
+        button.success {
+            background: #4caf50;
+        }
+        button.fail {
+            background: #f44336;
+        }
+        .results {
+            background: #264653;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .critical-issue {
+            background: #d32f2f;
+            color: white;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .iframe-container {
+            position: relative;
+            margin: 20px 0;
+            border: 2px solid #0073aa;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        iframe {
+            width: 100%;
+            height: 600px;
+            border: none;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+        .status-pending {
+            background: #ffc107;
+        }
+        .status-pass {
+            background: #4caf50;
+        }
+        .status-fail {
+            background: #f44336;
+        }
+        .test-instructions {
+            background: #e3f2fd;
+            border: 1px solid #2196f3;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 WordPress WP Content Flow Plugin - Comprehensive E2E Testing Suite</h1>
+    
+    <div class="test-container">
+        <div class="test-header">
+            <h2>📋 Test Configuration & Setup</h2>
+        </div>
+        <div class="test-instructions">
+            <strong>WordPress Instance:</strong> http://localhost:8080<br>
+            <strong>Admin Credentials:</strong> admin / !3cTXkh)9iDHhV5o*N<br>
+            <strong>Purpose:</strong> Validate the critical settings persistence bug fix and overall plugin functionality
+        </div>
+        <button onclick="openWordPress()">🔗 Open WordPress Admin</button>
+        <div id="wp-connection-status"></div>
+    </div>
+
+    <!-- Test 1: WordPress Admin Access -->
+    <div class="test-container">
+        <div class="test-header">
+            <h3><span class="status-indicator status-pending" id="test1-status"></span>Test 1: WordPress Admin Access & Authentication</h3>
+        </div>
+        <div class="test-instructions">
+            <strong>Critical Test:</strong> Verify WordPress admin login and basic navigation
+        </div>
+        <div class="test-step">
+            <strong>Step 1:</strong> Navigate to http://localhost:8080/wp-admin
+        </div>
+        <div class="test-step">
+            <strong>Step 2:</strong> Login with credentials: admin / !3cTXkh)9iDHhV5o*N
+        </div>
+        <div class="test-step">
+            <strong>Step 3:</strong> Verify admin dashboard loads with admin bar visible
+        </div>
+        <div class="iframe-container">
+            <iframe id="wp-admin-frame" src="about:blank"></iframe>
+        </div>
+        <button onclick="testAdminAccess()">▶️ Load WordPress Admin</button>
+        <button onclick="passTest(1)" class="success">✅ PASS</button>
+        <button onclick="failTest(1)" class="fail">❌ FAIL</button>
+        <div id="test1-result"></div>
+    </div>
+
+    <!-- Test 2: Plugin Detection & Status -->
+    <div class="test-container">
+        <div class="test-header">
+            <h3><span class="status-indicator status-pending" id="test2-status"></span>Test 2: Plugin Detection & Activation Status</h3>
+        </div>
+        <div class="test-instructions">
+            <strong>Critical Test:</strong> Verify WP Content Flow plugin is installed and active
+        </div>
+        <div class="test-step">
+            <strong>Step 1:</strong> Navigate to Plugins page (Plugins → Installed Plugins)
+        </div>
+        <div class="test-step">
+            <strong>Step 2:</strong> Look for "WP Content Flow" plugin in the list
+        </div>
+        <div class="test-step">
+            <strong>Step 3:</strong> Verify plugin shows as "Active" (no "Activate" link visible)
+        </div>
+        <div class="iframe-container">
+            <iframe id="plugins-frame" src="about:blank"></iframe>
+        </div>
+        <button onclick="testPluginStatus()">▶️ Load Plugins Page</button>
+        <button onclick="passTest(2)" class="success">✅ PASS</button>
+        <button onclick="failTest(2)" class="fail">❌ FAIL</button>
+        <div id="test2-result"></div>
+    </div>
+
+    <!-- Test 3: Settings Page Access -->
+    <div class="test-container">
+        <div class="test-header">
+            <h3><span class="status-indicator status-pending" id="test3-status"></span>Test 3: Settings Page Access & Navigation</h3>
+        </div>
+        <div class="test-instructions">
+            <strong>Critical Test:</strong> Access plugin settings page and verify form loads
+        </div>
+        <div class="test-step">
+            <strong>Step 1:</strong> Navigate to Settings → WP Content Flow (or similar menu)
+        </div>
+        <div class="test-step">
+            <strong>Step 2:</strong> Alternatively try: wp-admin/admin.php?page=wp-content-flow-settings
+        </div>
+        <div class="test-step">
+            <strong>Step 3:</strong> Verify settings form loads with provider dropdown and save button
+        </div>
+        <div class="iframe-container">
+            <iframe id="settings-frame" src="about:blank"></iframe>
+        </div>
+        <button onclick="testSettingsAccess()">▶️ Load Settings Page</button>
+        <button onclick="passTest(3)" class="success">✅ PASS</button>
+        <button onclick="failTest(3)" class="fail">❌ FAIL</button>
+        <div id="test3-result"></div>
+    </div>
+
+    <!-- Test 4: CRITICAL - Settings Persistence Bug -->
+    <div class="test-container">
+        <div class="test-header">
+            <h3><span class="status-indicator status-pending" id="test4-status"></span>Test 4: 🚨 CRITICAL - Settings Persistence Bug Fix Validation</h3>
+        </div>
+        <div class="test-instructions">
+            <strong>CRITICAL BUG TEST:</strong> The original user issue: "When I change the default provider and press Save settings, the default provider goes back to the first setting"
+        </div>
+        <div class="test-step">
+            <strong>Step 1:</strong> On the settings page, locate the "Default Provider" dropdown
+        </div>
+        <div class="test-step">
+            <strong>Step 2:</strong> Note the current selected value
+        </div>
+        <div class="test-step">
+            <strong>Step 3:</strong> Select a DIFFERENT provider option
+        </div>
+        <div class="test-step">
+            <strong>Step 4:</strong> Click "Save Settings" button
+        </div>
+        <div class="test-step">
+            <strong>Step 5:</strong> ⚠️ CRITICAL: Verify the dropdown RETAINS the changed value (doesn't revert to first option)
+        </div>
+        <div class="critical-issue">
+            <strong>⚠️ CRITICAL:</strong> If the dropdown reverts to the first option after saving, the original bug is NOT fixed!
+        </div>
+        <button onclick="testSettingsPersistence()">▶️ Test Settings Persistence</button>
+        <button onclick="passTest(4)" class="success">✅ PASS - Bug Fixed</button>
+        <button onclick="failTest(4)" class="fail">❌ FAIL - Bug Still Exists</button>
+        <div id="test4-result"></div>
+    </div>
+
+    <!-- Test 5: API Key Security -->
+    <div class="test-container">
+        <div class="test-header">
+            <h3><span class="status-indicator status-pending" id="test5-status"></span>Test 5: API Key Security Validation</h3>
+        </div>
+        <div class="test-instructions">
+            <strong>Security Test:</strong> Verify API keys are not displayed in plain text
+        </div>
+        <div class="test-step">
+            <strong>Step 1:</strong> On settings page, locate API key input fields
+        </div>
+        <div class="test-step">
+            <strong>Step 2:</strong> Check if API keys are masked (password type fields) or plain text
+        </div>
+        <div class="test-step">
+            <strong>Step 3:</strong> Verify no sensitive data is visible in page source
+        </div>
+        <div class="critical-issue">
+            <strong>🔒 Security Issue:</strong> API keys shown in plain text are a security vulnerability
+        </div>
+        <button onclick="passTest(5)" class="success">✅ PASS - Keys Secured</button>
+        <button onclick="failTest(5)" class="fail">❌ FAIL - Security Issue</button>
+        <div id="test5-result"></div>
+    </div>
+
+    <!-- Test 6: Gutenberg Block Integration -->
+    <div class="test-container">
+        <div class="test-header">
+            <h3><span class="status-indicator status-pending" id="test6-status"></span>Test 6: Gutenberg Block Integration</h3>
+        </div>
+        <div class="test-instructions">
+            <strong>Block Editor Test:</strong> Verify AI Content Flow blocks are available in Gutenberg
+        </div>
+        <div class="test-step">
+            <strong>Step 1:</strong> Navigate to Posts → Add New
+        </div>
+        <div class="test-step">
+            <strong>Step 2:</strong> Click the (+) block inserter button
+        </div>
+        <div class="test-step">
+            <strong>Step 3:</strong> Search for "AI" or "Content Flow" blocks
+        </div>
+        <div class="test-step">
+            <strong>Step 4:</strong> Verify plugin blocks appear in the block library
+        </div>
+        <div class="iframe-container">
+            <iframe id="editor-frame" src="about:blank"></iframe>
+        </div>
+        <button onclick="testGutenbergBlocks()">▶️ Load Post Editor</button>
+        <button onclick="passTest(6)" class="success">✅ PASS</button>
+        <button onclick="failTest(6)" class="fail">❌ FAIL</button>
+        <div id="test6-result"></div>
+    </div>
+
+    <!-- Test Results -->
+    <div class="results" id="test-results">
+        <h2>📊 Test Results Summary</h2>
+        <div id="results-content">
+            <p>Run tests above to see results...</p>
+        </div>
+    </div>
+
+    <script>
+        let testResults = {
+            total: 6,
+            passed: 0,
+            failed: 0,
+            details: []
+        };
+
+        function openWordPress() {
+            window.open('http://localhost:8080/wp-admin', '_blank');
+        }
+
+        function testAdminAccess() {
+            document.getElementById('wp-admin-frame').src = 'http://localhost:8080/wp-admin';
+        }
+
+        function testPluginStatus() {
+            document.getElementById('plugins-frame').src = 'http://localhost:8080/wp-admin/plugins.php';
+        }
+
+        function testSettingsAccess() {
+            // Try most likely settings page URL
+            document.getElementById('settings-frame').src = 'http://localhost:8080/wp-admin/admin.php?page=wp-content-flow-settings';
+        }
+
+        function testSettingsPersistence() {
+            alert('🚨 CRITICAL TEST INSTRUCTIONS:\n\n1. In the settings page iframe above, find the "Default Provider" dropdown\n2. Change it to a different option\n3. Click "Save Settings"\n4. CHECK: Does the dropdown keep your selection or revert to the first option?\n5. Mark PASS only if it keeps your selection, FAIL if it reverts');
+        }
+
+        function testGutenbergBlocks() {
+            document.getElementById('editor-frame').src = 'http://localhost:8080/wp-admin/post-new.php';
+        }
+
+        function passTest(testNumber) {
+            const status = document.getElementById(`test${testNumber}-status`);
+            const result = document.getElementById(`test${testNumber}-result`);
+            
+            status.className = 'status-indicator status-pass';
+            result.innerHTML = '<div class="test-step success"><strong>✅ TEST PASSED</strong> - Functionality working correctly</div>';
+            
+            testResults.passed++;
+            testResults.details.push(`Test ${testNumber}: PASSED`);
+            updateResults();
+        }
+
+        function failTest(testNumber) {
+            const status = document.getElementById(`test${testNumber}-status`);
+            const result = document.getElementById(`test${testNumber}-result`);
+            
+            status.className = 'status-indicator status-fail';
+            result.innerHTML = '<div class="test-step fail"><strong>❌ TEST FAILED</strong> - Issue found that needs fixing</div>';
+            
+            testResults.failed++;
+            testResults.details.push(`Test ${testNumber}: FAILED`);
+            updateResults();
+        }
+
+        function updateResults() {
+            const totalTests = testResults.passed + testResults.failed;
+            const successRate = totalTests > 0 ? Math.round((testResults.passed / totalTests) * 100) : 0;
+            
+            let productionReadiness = '';
+            let statusColor = '';
+            
+            if (testResults.failed === 0 && testResults.passed >= 4) {
+                productionReadiness = '🟢 READY FOR PRODUCTION - All critical tests passing';
+                statusColor = '#4caf50';
+            } else if (testResults.details.some(d => d.includes('4: FAILED'))) {
+                productionReadiness = '🔴 NOT READY FOR PRODUCTION - Critical settings persistence bug still exists!';
+                statusColor = '#f44336';
+            } else if (testResults.failed <= 2) {
+                productionReadiness = '🟡 MOSTLY READY - Some minor issues to address';
+                statusColor = '#ff9800';
+            } else {
+                productionReadiness = '🔴 NOT READY FOR PRODUCTION - Multiple critical issues found';
+                statusColor = '#f44336';
+            }
+
+            document.getElementById('results-content').innerHTML = `
+                <h3>📈 Statistics</h3>
+                <p><strong>Tests Completed:</strong> ${totalTests}/${testResults.total}</p>
+                <p><strong>Passed:</strong> ${testResults.passed}</p>
+                <p><strong>Failed:</strong> ${testResults.failed}</p>
+                <p><strong>Success Rate:</strong> ${successRate}%</p>
+                
+                <h3>🎯 Production Readiness</h3>
+                <div style="background: ${statusColor}; color: white; padding: 15px; border-radius: 4px; margin: 10px 0;">
+                    <strong>${productionReadiness}</strong>
+                </div>
+                
+                <h3>📋 Test Details</h3>
+                <ul>
+                    ${testResults.details.map(detail => `<li>${detail}</li>`).join('')}
+                </ul>
+                
+                ${testResults.details.some(d => d.includes('4: FAILED')) ? 
+                    '<div class="critical-issue"><strong>⚠️ CRITICAL ISSUE:</strong> The original user-reported settings persistence bug is still present and must be fixed before production deployment!</div>' 
+                    : ''}
+            `;
+        }
+
+        // Initialize results
+        updateResults();
+    </script>
+</body>
+</html>

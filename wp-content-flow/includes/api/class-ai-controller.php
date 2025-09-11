@@ -100,14 +100,9 @@ class WP_Content_Flow_AI_Controller extends WP_REST_Controller {
     public function generate_content( $request ) {
         // Validate required parameters
         $prompt = $request->get_param( 'prompt' );
-        $workflow_id = $request->get_param( 'workflow_id' );
         
         if ( empty( $prompt ) ) {
             return new WP_Error( 'rest_missing_callback_param', __( 'Prompt is required.', 'wp-content-flow' ), array( 'status' => 400 ) );
-        }
-        
-        if ( empty( $workflow_id ) ) {
-            return new WP_Error( 'rest_missing_callback_param', __( 'Workflow ID is required.', 'wp-content-flow' ), array( 'status' => 400 ) );
         }
         
         // Validate parameters constraints
@@ -118,16 +113,16 @@ class WP_Content_Flow_AI_Controller extends WP_REST_Controller {
             return $validation_result;
         }
         
-        // Load AI core service
-        require_once WP_CONTENT_FLOW_PLUGIN_DIR . 'includes/class-ai-core.php';
+        // Check for workflow_id or use settings-based approach
+        $workflow_id = $request->get_param( 'workflow_id' );
         
-        // Generate content
-        $result = WP_Content_Flow_AI_Core::generate_content(
-            $prompt,
-            $workflow_id,
-            $parameters,
-            $request->get_param( 'post_id' )
-        );
+        if ( ! empty( $workflow_id ) ) {
+            // Workflow-based generation (existing behavior)
+            $result = $this->generate_content_with_workflow( $prompt, $workflow_id, $parameters, $request->get_param( 'post_id' ) );
+        } else {
+            // Settings-based generation (for Gutenberg block)
+            $result = $this->generate_content_with_settings( $prompt, $parameters, $request->get_param( 'post_id' ) );
+        }
         
         if ( is_wp_error( $result ) ) {
             // Map internal errors to appropriate HTTP status codes
@@ -138,12 +133,135 @@ class WP_Content_Flow_AI_Controller extends WP_REST_Controller {
                     return new WP_Error( 'rest_forbidden', $result->get_error_message(), array( 'status' => 403 ) );
                 case 'rate_limit_exceeded':
                     return new WP_Error( 'rate_limit_exceeded', $result->get_error_message(), array( 'status' => 429 ) );
+                case 'no_provider_configured':
+                    return new WP_Error( 'rest_no_provider', $result->get_error_message(), array( 'status' => 400 ) );
+                case 'provider_not_found':
+                    return new WP_Error( 'rest_provider_error', $result->get_error_message(), array( 'status' => 500 ) );
                 default:
                     return new WP_Error( 'ai_generation_failed', $result->get_error_message(), array( 'status' => 500 ) );
             }
         }
         
         return rest_ensure_response( $result );
+    }
+    
+    /**
+     * Generate content using workflow
+     *
+     * @param string $prompt Content prompt
+     * @param int $workflow_id Workflow ID
+     * @param array $parameters AI parameters
+     * @param int|null $post_id Optional post ID
+     * @return array|WP_Error AI response or error
+     */
+    private function generate_content_with_workflow( $prompt, $workflow_id, $parameters = array(), $post_id = null ) {
+        // Load AI core service
+        require_once WP_CONTENT_FLOW_PLUGIN_DIR . 'includes/class-ai-core.php';
+        
+        return WP_Content_Flow_AI_Core::generate_content( $prompt, $workflow_id, $parameters, $post_id );
+    }
+    
+    /**
+     * Generate content using plugin settings
+     *
+     * @param string $prompt Content prompt
+     * @param array $parameters AI parameters
+     * @param int|null $post_id Optional post ID
+     * @return array|WP_Error AI response or error
+     */
+    private function generate_content_with_settings( $prompt, $parameters = array(), $post_id = null ) {
+        // Get plugin settings
+        $settings = get_option( 'wp_content_flow_settings', array() );
+        
+        // Check if any AI provider is configured
+        $has_provider = false;
+        $providers = array( 'openai_api_key', 'anthropic_api_key', 'google_api_key' );
+        
+        foreach ( $providers as $provider_key ) {
+            if ( ! empty( $settings[ $provider_key ] ) ) {
+                $has_provider = true;
+                break;
+            }
+        }
+        
+        if ( ! $has_provider ) {
+            return new WP_Error( 'no_provider_configured', __( 'No AI provider API keys are configured. Please configure at least one provider in the plugin settings.', 'wp-content-flow' ) );
+        }
+        
+        // Get default provider from settings
+        $default_provider = $settings['default_ai_provider'] ?? 'openai';
+        
+        // Check if the default provider has an API key
+        $provider_key = $default_provider . '_api_key';
+        if ( empty( $settings[ $provider_key ] ) ) {
+            // Find the first available provider
+            $available_provider = null;
+            foreach ( array( 'openai', 'anthropic', 'google' ) as $provider ) {
+                if ( ! empty( $settings[ $provider . '_api_key' ] ) ) {
+                    $available_provider = $provider;
+                    break;
+                }
+            }
+            
+            if ( ! $available_provider ) {
+                return new WP_Error( 'no_provider_configured', __( 'No AI provider API keys are configured.', 'wp-content-flow' ) );
+            }
+            
+            $default_provider = $available_provider;
+        }
+        
+        // Rate limiting check
+        if ( ! $this->check_rate_limits_from_settings( $settings ) ) {
+            return new WP_Error( 'rate_limit_exceeded', __( 'Too many AI requests. Please try again later.', 'wp-content-flow' ) );
+        }
+        
+        // Prepare AI provider parameters
+        $merged_parameters = array_merge( array(
+            'max_tokens' => 1000,
+            'temperature' => 0.7
+        ), $parameters );
+        
+        // Generate cache key
+        $cache_key = $this->generate_cache_key_from_settings( $prompt, $merged_parameters, $default_provider );
+        
+        // Check cache if enabled
+        if ( ! empty( $settings['cache_enabled'] ) ) {
+            $cached_response = $this->get_cached_response( $cache_key );
+            if ( $cached_response ) {
+                return $cached_response;
+            }
+        }
+        
+        // Get AI provider instance
+        $provider_instance = $this->get_provider_instance_from_settings( $default_provider, $settings );
+        if ( is_wp_error( $provider_instance ) ) {
+            return $provider_instance;
+        }
+        
+        // Generate content using provider
+        $ai_response = $provider_instance->generate_content( $prompt, $merged_parameters );
+        
+        if ( is_wp_error( $ai_response ) ) {
+            return $ai_response;
+        }
+        
+        // Update rate limiting
+        $this->update_rate_limits_from_settings();
+        
+        // Cache the response if enabled
+        if ( ! empty( $settings['cache_enabled'] ) ) {
+            $this->cache_response( $cache_key, $ai_response, $settings );
+        }
+        
+        // Format response for API
+        $formatted_response = array(
+            'suggested_content' => $ai_response['content'] ?? $ai_response['suggested_content'] ?? '',
+            'confidence_score' => $ai_response['confidence_score'] ?? 0.85,
+            'provider_used' => $default_provider,
+            'tokens_used' => $ai_response['tokens_used'] ?? 0
+        );
+        
+        return $formatted_response;
     }
     
     /**
@@ -155,34 +273,29 @@ class WP_Content_Flow_AI_Controller extends WP_REST_Controller {
     public function improve_content( $request ) {
         // Validate required parameters
         $content = $request->get_param( 'content' );
-        $workflow_id = $request->get_param( 'workflow_id' );
         
         if ( empty( $content ) ) {
             return new WP_Error( 'rest_missing_callback_param', __( 'Content is required.', 'wp-content-flow' ), array( 'status' => 400 ) );
         }
         
-        if ( empty( $workflow_id ) ) {
-            return new WP_Error( 'rest_missing_callback_param', __( 'Workflow ID is required.', 'wp-content-flow' ), array( 'status' => 400 ) );
-        }
-        
         $improvement_type = $request->get_param( 'improvement_type' ) ?: 'general';
         
         // Validate improvement type
-        $valid_types = array( 'grammar', 'style', 'clarity', 'engagement', 'seo' );
+        $valid_types = array( 'grammar', 'style', 'clarity', 'engagement', 'seo', 'general' );
         if ( ! in_array( $improvement_type, $valid_types, true ) ) {
             return new WP_Error( 'rest_invalid_param', sprintf( __( 'Improvement type must be one of: %s', 'wp-content-flow' ), implode( ', ', $valid_types ) ), array( 'status' => 400 ) );
         }
         
-        // Load AI core service
-        require_once WP_CONTENT_FLOW_PLUGIN_DIR . 'includes/class-ai-core.php';
+        // Check for workflow_id or use settings-based approach
+        $workflow_id = $request->get_param( 'workflow_id' );
         
-        // Improve content
-        $result = WP_Content_Flow_AI_Core::improve_content(
-            $content,
-            $workflow_id,
-            $improvement_type,
-            $request->get_param( 'parameters' ) ?: array()
-        );
+        if ( ! empty( $workflow_id ) ) {
+            // Workflow-based improvement (existing behavior)
+            $result = $this->improve_content_with_workflow( $content, $workflow_id, $improvement_type, $request->get_param( 'parameters' ) ?: array() );
+        } else {
+            // Settings-based improvement (for Gutenberg block)
+            $result = $this->improve_content_with_settings( $content, $improvement_type, $request->get_param( 'parameters' ) ?: array() );
+        }
         
         if ( is_wp_error( $result ) ) {
             // Map internal errors to appropriate HTTP status codes
@@ -193,12 +306,140 @@ class WP_Content_Flow_AI_Controller extends WP_REST_Controller {
                     return new WP_Error( 'rest_forbidden', $result->get_error_message(), array( 'status' => 403 ) );
                 case 'rate_limit_exceeded':
                     return new WP_Error( 'rate_limit_exceeded', $result->get_error_message(), array( 'status' => 429 ) );
+                case 'no_provider_configured':
+                    return new WP_Error( 'rest_no_provider', $result->get_error_message(), array( 'status' => 400 ) );
+                case 'provider_not_found':
+                    return new WP_Error( 'rest_provider_error', $result->get_error_message(), array( 'status' => 500 ) );
                 default:
                     return new WP_Error( 'ai_improvement_failed', $result->get_error_message(), array( 'status' => 500 ) );
             }
         }
         
         return rest_ensure_response( $result );
+    }
+    
+    /**
+     * Improve content using workflow
+     *
+     * @param string $content Content to improve
+     * @param int $workflow_id Workflow ID
+     * @param string $improvement_type Type of improvement
+     * @param array $parameters AI parameters
+     * @return array|WP_Error AI response or error
+     */
+    private function improve_content_with_workflow( $content, $workflow_id, $improvement_type, $parameters = array() ) {
+        // Load AI core service
+        require_once WP_CONTENT_FLOW_PLUGIN_DIR . 'includes/class-ai-core.php';
+        
+        return WP_Content_Flow_AI_Core::improve_content( $content, $workflow_id, $improvement_type, $parameters );
+    }
+    
+    /**
+     * Improve content using plugin settings
+     *
+     * @param string $content Content to improve
+     * @param string $improvement_type Type of improvement
+     * @param array $parameters AI parameters
+     * @return array|WP_Error AI response or error
+     */
+    private function improve_content_with_settings( $content, $improvement_type, $parameters = array() ) {
+        // Get plugin settings
+        $settings = get_option( 'wp_content_flow_settings', array() );
+        
+        // Check if any AI provider is configured
+        $has_provider = false;
+        $providers = array( 'openai_api_key', 'anthropic_api_key', 'google_api_key' );
+        
+        foreach ( $providers as $provider_key ) {
+            if ( ! empty( $settings[ $provider_key ] ) ) {
+                $has_provider = true;
+                break;
+            }
+        }
+        
+        if ( ! $has_provider ) {
+            return new WP_Error( 'no_provider_configured', __( 'No AI provider API keys are configured. Please configure at least one provider in the plugin settings.', 'wp-content-flow' ) );
+        }
+        
+        // Get default provider from settings
+        $default_provider = $settings['default_ai_provider'] ?? 'openai';
+        
+        // Check if the default provider has an API key
+        $provider_key = $default_provider . '_api_key';
+        if ( empty( $settings[ $provider_key ] ) ) {
+            // Find the first available provider
+            $available_provider = null;
+            foreach ( array( 'openai', 'anthropic', 'google' ) as $provider ) {
+                if ( ! empty( $settings[ $provider . '_api_key' ] ) ) {
+                    $available_provider = $provider;
+                    break;
+                }
+            }
+            
+            if ( ! $available_provider ) {
+                return new WP_Error( 'no_provider_configured', __( 'No AI provider API keys are configured.', 'wp-content-flow' ) );
+            }
+            
+            $default_provider = $available_provider;
+        }
+        
+        // Rate limiting check
+        if ( ! $this->check_rate_limits_from_settings( $settings ) ) {
+            return new WP_Error( 'rate_limit_exceeded', __( 'Too many AI requests. Please try again later.', 'wp-content-flow' ) );
+        }
+        
+        // Prepare AI provider parameters
+        $merged_parameters = array_merge( array(
+            'max_tokens' => 1000,
+            'temperature' => 0.7,
+            'improvement_type' => $improvement_type
+        ), $parameters );
+        
+        // Generate cache key
+        $cache_key = $this->generate_cache_key_from_settings( 'improve:' . $content, $merged_parameters, $default_provider );
+        
+        // Check cache if enabled
+        if ( ! empty( $settings['cache_enabled'] ) ) {
+            $cached_response = $this->get_cached_response( $cache_key );
+            if ( $cached_response ) {
+                return $cached_response;
+            }
+        }
+        
+        // Get AI provider instance
+        $provider_instance = $this->get_provider_instance_from_settings( $default_provider, $settings );
+        if ( is_wp_error( $provider_instance ) ) {
+            return $provider_instance;
+        }
+        
+        // Improve content using provider
+        $ai_responses = $provider_instance->improve_content( $content, $improvement_type, $merged_parameters );
+        
+        if ( is_wp_error( $ai_responses ) ) {
+            return $ai_responses;
+        }
+        
+        // Update rate limiting
+        $this->update_rate_limits_from_settings();
+        
+        // Cache the response if enabled
+        if ( ! empty( $settings['cache_enabled'] ) ) {
+            $this->cache_response( $cache_key, $ai_responses, $settings );
+        }
+        
+        // Format response for API (improve returns array of suggestions)
+        $formatted_responses = array();
+        $responses_array = is_array( $ai_responses ) ? $ai_responses : array( $ai_responses );
+        
+        foreach ( $responses_array as $ai_response ) {
+            $formatted_responses[] = array(
+                'suggested_content' => $ai_response['content'] ?? $ai_response['suggested_content'] ?? '',
+                'confidence_score' => $ai_response['confidence_score'] ?? 0.85,
+                'improvement_type' => $improvement_type
+            );
+        }
+        
+        return $formatted_responses;
     }
     
     /**
@@ -240,9 +481,9 @@ class WP_Content_Flow_AI_Controller extends WP_REST_Controller {
                 'sanitize_callback' => 'sanitize_textarea_field'
             ),
             'workflow_id' => array(
-                'description' => __( 'The ID of the workflow to use.', 'wp-content-flow' ),
+                'description' => __( 'The ID of the workflow to use. If not provided, will use plugin settings.', 'wp-content-flow' ),
                 'type' => 'integer',
-                'required' => true,
+                'required' => false,
                 'sanitize_callback' => 'absint'
             ),
             'post_id' => array(
@@ -284,15 +525,15 @@ class WP_Content_Flow_AI_Controller extends WP_REST_Controller {
                 'sanitize_callback' => 'wp_kses_post'
             ),
             'workflow_id' => array(
-                'description' => __( 'The ID of the workflow to use.', 'wp-content-flow' ),
+                'description' => __( 'The ID of the workflow to use. If not provided, will use plugin settings.', 'wp-content-flow' ),
                 'type' => 'integer',
-                'required' => true,
+                'required' => false,
                 'sanitize_callback' => 'absint'
             ),
             'improvement_type' => array(
                 'description' => __( 'The type of improvement to make.', 'wp-content-flow' ),
                 'type' => 'string',
-                'enum' => array( 'grammar', 'style', 'clarity', 'engagement', 'seo' ),
+                'enum' => array( 'grammar', 'style', 'clarity', 'engagement', 'seo', 'general' ),
                 'default' => 'general',
                 'sanitize_callback' => 'sanitize_key'
             )
@@ -367,5 +608,136 @@ class WP_Content_Flow_AI_Controller extends WP_REST_Controller {
             'type' => 'array',
             'items' => $this->get_generate_schema()
         );
+    }
+    
+    /**
+     * Check rate limits from settings
+     *
+     * @param array $settings Plugin settings
+     * @return bool True if within limits, false otherwise
+     */
+    private function check_rate_limits_from_settings( $settings ) {
+        if ( empty( $settings['requests_per_minute'] ) ) {
+            return true; // Rate limiting disabled
+        }
+        
+        $user_id = get_current_user_id();
+        $current_time = time();
+        $rate_limit_key = 'wp_content_flow_rate_limit_' . $user_id;
+        
+        // Get current rate limit data
+        $rate_data = get_transient( $rate_limit_key );
+        if ( ! $rate_data ) {
+            $rate_data = array(
+                'minute' => array( 'count' => 0, 'reset_time' => $current_time + 60 ),
+                'requests' => array()
+            );
+        }
+        
+        // Clean old requests (older than 1 minute)
+        $rate_data['requests'] = array_filter( $rate_data['requests'], function( $timestamp ) use ( $current_time ) {
+            return $current_time - $timestamp < 60;
+        } );
+        
+        // Check if we've exceeded the limit
+        $requests_per_minute = (int) $settings['requests_per_minute'];
+        if ( count( $rate_data['requests'] ) >= $requests_per_minute ) {
+            return false;
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Update rate limits from settings
+     */
+    private function update_rate_limits_from_settings() {
+        $user_id = get_current_user_id();
+        $current_time = time();
+        $rate_limit_key = 'wp_content_flow_rate_limit_' . $user_id;
+        
+        // Get current rate limit data
+        $rate_data = get_transient( $rate_limit_key );
+        if ( ! $rate_data ) {
+            $rate_data = array(
+                'minute' => array( 'count' => 0, 'reset_time' => $current_time + 60 ),
+                'requests' => array()
+            );
+        }
+        
+        // Add current request timestamp
+        $rate_data['requests'][] = $current_time;
+        
+        // Clean old requests
+        $rate_data['requests'] = array_filter( $rate_data['requests'], function( $timestamp ) use ( $current_time ) {
+            return $current_time - $timestamp < 60;
+        } );
+        
+        // Save for 2 minutes to be safe
+        set_transient( $rate_limit_key, $rate_data, 120 );
+    }
+    
+    /**
+     * Generate cache key from settings
+     *
+     * @param string $prompt The prompt or content
+     * @param array $parameters AI parameters
+     * @param string $provider Provider name
+     * @return string Cache key
+     */
+    private function generate_cache_key_from_settings( $prompt, $parameters, $provider ) {
+        $key_data = array(
+            'prompt' => substr( md5( $prompt ), 0, 8 ),
+            'parameters' => md5( serialize( $parameters ) ),
+            'provider' => $provider
+        );
+        
+        return 'wp_content_flow_ai_' . md5( serialize( $key_data ) );
+    }
+    
+    /**
+     * Get cached response
+     *
+     * @param string $cache_key Cache key
+     * @return array|null Cached response or null
+     */
+    private function get_cached_response( $cache_key ) {
+        return get_transient( $cache_key );
+    }
+    
+    /**
+     * Cache response
+     *
+     * @param string $cache_key Cache key
+     * @param mixed $response Response to cache
+     * @param array $settings Plugin settings
+     */
+    private function cache_response( $cache_key, $response, $settings ) {
+        $cache_duration = $settings['cache_duration'] ?? 1800; // 30 minutes default
+        set_transient( $cache_key, $response, $cache_duration );
+    }
+    
+    /**
+     * Get AI provider instance from settings
+     *
+     * @param string $provider_name Provider name
+     * @param array $settings Plugin settings
+     * @return object|WP_Error Provider instance or error
+     */
+    private function get_provider_instance_from_settings( $provider_name, $settings ) {
+        // For now, we'll create a simplified provider that works with the settings
+        // In a full implementation, we would have actual provider classes
+        
+        $api_key = $settings[ $provider_name . '_api_key' ] ?? '';
+        if ( empty( $api_key ) ) {
+            return new WP_Error( 'provider_not_configured', sprintf( __( '%s API key is not configured.', 'wp-content-flow' ), ucfirst( $provider_name ) ) );
+        }
+        
+        // Create a simplified provider instance
+        require_once WP_CONTENT_FLOW_PLUGIN_DIR . 'includes/providers/class-simple-provider.php';
+        
+        $provider_instance = new WP_Content_Flow_Simple_Provider( $provider_name, $api_key );
+        
+        return $provider_instance;
     }
 }

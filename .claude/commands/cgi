@@ -1,0 +1,134 @@
+#!/bin/bash
+
+# CGI - Create GitHub Issues for WordPress AI Content Flow Plugin
+# Usage: /cgi "Issue description with optional screenshots like tmp/screenshot.png"
+
+set -euo pipefail
+
+
+# Function to get GitHub repository URL
+get_github_repo_url() {
+    local remote_url=$(git config --get remote.origin.url 2>/dev/null || echo "")
+    
+    if [[ -n "$remote_url" ]]; then
+        # Convert SSH to HTTPS if needed
+        if [[ "$remote_url" =~ ^git@github\.com:(.+)\.git$ ]]; then
+            echo "https://github.com/${BASH_REMATCH[1]}"
+        elif [[ "$remote_url" =~ ^https://github\.com/(.+)\.git$ ]]; then
+            echo "https://github.com/${BASH_REMATCH[1]}"
+        elif [[ "$remote_url" =~ ^https://github\.com/(.+)$ ]]; then
+            echo "https://github.com/${BASH_REMATCH[1]}"
+        else
+            echo "$remote_url"
+        fi
+    else
+        echo "https://github.com/loomster321/WP_ContentFlow"  # fallback
+    fi
+}
+
+# Function to process screenshots using local file references
+process_local_screenshots() {
+    local description="$1"
+    local processed_description="$description"
+    
+    # Find image file paths (handle various formats)
+    local image_paths=$(echo "$description" | grep -oE 'tmp/[^[:space:]]*\.(png|jpg|jpeg|gif|webp)|/[^[:space:]]*\.(png|jpg|jpeg|gif|webp)' | head -10 || true)
+    
+    if [[ -n "$image_paths" ]]; then
+        echo "📸 Found WordPress screenshots to reference:" >&2
+        echo "$image_paths" >&2
+        
+        # Process each image
+        while IFS= read -r image_path; do
+            if [[ -n "$image_path" && -f "$image_path" ]]; then
+                echo "Processing WordPress screenshot: $image_path" >&2
+                
+                # Simply keep the local file reference - Claude Code can access it directly
+                echo "✅ Using local file reference: $image_path" >&2
+            else
+                echo "⚠️  File not found: $image_path" >&2
+            fi
+        done <<< "$image_paths"
+        
+    else
+        echo "ℹ️  No screenshots found in description" >&2
+    fi
+    
+    echo "$processed_description"
+}
+
+# Function to detect issue type from description
+detect_issue_type() {
+    local description="$1"
+    
+    # Convert to lowercase for analysis
+    local lower_desc=$(echo "$description" | tr '[:upper:]' '[:lower:]')
+    
+    # Bug indicators
+    if echo "$lower_desc" | grep -qE "(error|bug|crash|fail|broken|not work|issue|problem|exception|fatal)"; then
+        echo "bug"
+        return 0
+    fi
+    
+    # Feature/enhancement indicators  
+    if echo "$lower_desc" | grep -qE "(feature|enhance|improve|add|new|implement|create|support|upgrade)"; then
+        echo "enhancement"
+        return 0
+    fi
+    
+    # Default to enhancement if unclear
+    echo "enhancement"
+}
+
+
+# Main CGI function
+main() {
+    if [[ $# -eq 0 ]]; then
+        echo "Usage: /cgi \"Issue description with optional screenshots like tmp/screenshot.png\""
+        echo "Example: /cgi \"The settings page won't save API keys, see tmp/settings-error.png\""
+        exit 1
+    fi
+    
+    local issue_description="$1"
+    
+    echo "Creating GitHub Issue for WordPress AI Content Flow Plugin"
+    echo "=========================================================="
+    echo ""
+    
+    # Detect issue type
+    local issue_type=$(detect_issue_type "$issue_description")
+    
+    echo "🔍 Detected issue type: $issue_type" >&2
+    echo ""
+    
+    # Process screenshots using local file references
+    echo "📁 Processing screenshots with local file references..." >&2
+    local processed_description=$(process_local_screenshots "$issue_description")
+    
+    # Display the processed description for Claude to analyze and create the issue
+    echo "Issue Description (with local file references):"
+    echo "==============================================="
+    echo "$processed_description"
+    echo ""
+    echo "Repository URL: $(get_github_repo_url)"
+    echo "Issue Type: $issue_type"
+    echo ""
+    echo "Please analyze this issue description and create a comprehensive GitHub issue following WordPress plugin development best practices."
+    echo ""
+    echo "Classification Guidelines:"
+    echo "- BUG: WordPress/plugin functionality broken, errors, crashes, incorrect behavior"
+    echo "- ENHANCEMENT: New features, improvements, optimizations, UI/UX enhancements"
+    echo ""
+    echo "Required Steps:"
+    echo "1. Research the WordPress AI Content Flow Plugin repository structure"
+    echo "2. Classify as either 'bug' or 'enhancement' (detected: $issue_type)"
+    echo "3. Create comprehensive issue with WordPress context"
+    echo "4. Use gh CLI to create the issue with proper labels"
+    echo "5. Use local file references for screenshots (e.g., 'Screenshot: tmp/file.png')"
+    echo "6. Provide the GitHub issue URL"
+    echo ""
+    echo "Screenshots are referenced locally - Claude Code can access them directly with file paths."
+}
+
+# Execute main function with all arguments
+main "$@"

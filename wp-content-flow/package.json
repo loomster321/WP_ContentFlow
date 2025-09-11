@@ -109,8 +109,7 @@
   "wp-scripts": {
     "entry": {
       "blocks": "./assets/js/blocks.js",
-      "editor": "./assets/js/editor.js",
-      "frontend": "./assets/js/frontend.js"
+      "admin": "./assets/js/admin.js"
     }
   }
 }

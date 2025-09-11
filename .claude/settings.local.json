@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Read(//tmp/**)",
-      "Read(//home/timl/dev/backtester/**)"
+      "Read(//home/timl/dev/backtester/**)",
+      "Bash(gh issue create:*)",
+      "Bash(docker compose:*)"
     ],
     "deny": [],
     "ask": []

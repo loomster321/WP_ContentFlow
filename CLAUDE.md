@@ -19,10 +19,18 @@ WordPress AI Content Flow Plugin - An AI-powered content workflow system that in
 **Use the general-purpose subagent via the Task tool, referencing specialized agents in `.claude/agents/` for domain-specific work:**
 
 ### Available Specialized Agents
+
+#### Development & Architecture
 - **WordPress Developer Expert** (`.claude/agents/wordpress-developer-expert.md`)
+- **WordPress Troubleshooter** (`.claude/agents/wordpress-troubleshooter.md`)
+
+#### Testing & Quality Assurance  
 - **WordPress Playwright Expert** (`.claude/agents/wordpress-playwright-expert.md`)
+- **WordPress Test Planner** (`.claude/agents/wordpress-test-planner.md`)
 - **AI Validation Expert** (`.claude/agents/ai-validation-expert.md`)
-- **Performance Testing Expert** (`.claude/agents/performance-testing-expert.md`)
+
+#### Performance & Optimization
+- **WordPress Performance Tester** (`.claude/agents/wordpress-performance-tester.md`)
 
 ### WordPress Developer Expert
 - **Specialization**: WordPress plugin and theme development, architecture, and standards
@@ -69,14 +77,44 @@ Use Task tool with subagent_type: "general-purpose" and reference ai-validation-
 - Test multi-provider content generation workflows
 ```
 
-### Performance Testing Expert
+### WordPress Test Planner
+- **Specialization**: WordPress plugin test plan development and E2E test strategy
+- **Use when**: Creating comprehensive test plans for plugin releases, analyzing test requirements, developing QA frameworks
+- **Expertise**: WordPress test planning, E2E strategy, user role testing, plugin lifecycle testing, quality assurance
+
+Example usage:
+```
+Use Task tool with subagent_type: "wordpress-test-planner" to:
+- Create comprehensive test plans for WordPress plugin functionality
+- Develop E2E test scenarios for admin interfaces and user workflows  
+- Plan multi-user role testing (admin, editor, author, contributor, subscriber)
+- Design plugin activation/deactivation test workflows
+- Structure test plans for WordPress Playwright Expert execution
+```
+
+### WordPress Troubleshooter
+- **Specialization**: WordPress development issues and debugging with Context7 MCP integration
+- **Use when**: Diagnosing plugin problems, resolving theme conflicts, investigating performance bottlenecks, debugging database queries
+- **Expertise**: WordPress core debugging, plugin lifecycle issues, Context7 advanced debugging, error diagnosis
+
+Example usage:
+```
+Use Task tool with subagent_type: "wordpress-troubleshooter" to:
+- Debug WordPress plugin activation errors and fatal errors
+- Investigate WordPress admin performance issues
+- Resolve Gutenberg block development problems  
+- Troubleshoot database query performance with Context7 profiling
+- Diagnose plugin conflicts and theme compatibility issues
+```
+
+### WordPress Performance Tester
 - **Specialization**: WordPress performance optimization and load testing
 - **Use when**: Analyzing bottlenecks, testing caching, database optimization, scalability testing
 - **Expertise**: Database queries, Redis caching, memory monitoring, resource optimization
 
 Example usage:
 ```
-Use Task tool with subagent_type: "general-purpose" and reference performance-testing-expert.md to:
+Use Task tool with subagent_type: "wordpress-performance-tester" to:
 - Analyze WordPress database query performance and optimization
 - Test caching systems (Redis, WordPress transients) under load
 - Monitor memory usage during AI content generation
@@ -208,6 +246,40 @@ npm run docker:down
 - **Validate AI provider switching** and fallback mechanisms
 - **Monitor performance impact** on WordPress admin and frontend
 - **Use Context7 debugging** for development and troubleshooting
+
+## Authentication and Permission Policy
+
+**CRITICAL: When encountering authentication or permission issues, DO NOT implement workarounds.**
+
+### Required Behavior:
+1. **STOP immediately** when encountering permission/authentication blocks
+2. **ASK the human** for direction and assistance
+3. **WAIT for human resolution** before proceeding
+
+### Common Scenarios:
+- `npm install` permission denied → **STOP and ask human**
+- Docker container access issues → **STOP and ask human**
+- File system permission problems → **STOP and ask human**
+- Database connection authentication → **STOP and ask human**
+- WordPress admin login issues → **STOP and ask human**
+
+### Why This Policy Exists:
+- Human has proper credentials and system access
+- Workarounds lead to incomplete testing and poor decisions
+- Proper authentication enables optimal solutions
+- Prevents false positive assessments and dangerous recommendations
+
+### What NOT to do:
+- ❌ Skip testing due to permission issues
+- ❌ Create alternative/workaround testing approaches
+- ❌ Make production readiness claims without proper testing
+- ❌ Assume functionality works based on code review alone
+
+### What TO do:
+- ✅ Stop and clearly explain the permission/authentication issue
+- ✅ Request human assistance to resolve access problems
+- ✅ Wait for proper access before continuing testing
+- ✅ Use proper tools and testing approaches once access is restored
 
 ## Error Handling
 

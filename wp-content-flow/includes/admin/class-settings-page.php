@@ -232,17 +232,32 @@ class WP_Content_Flow_Settings_Page {
     public function sanitize_settings($input) {
         $sanitized = array();
         
-        // Sanitize API keys
+        // Sanitize and encrypt API keys
         if (isset($input['openai_api_key'])) {
-            $sanitized['openai_api_key'] = sanitize_text_field($input['openai_api_key']);
+            $clean_key = sanitize_text_field($input['openai_api_key']);
+            if (!empty($clean_key)) {
+                $sanitized['openai_api_key_encrypted'] = $this->encrypt_api_key($clean_key);
+                // Remove plain text version
+                unset($sanitized['openai_api_key']);
+            }
         }
         
         if (isset($input['anthropic_api_key'])) {
-            $sanitized['anthropic_api_key'] = sanitize_text_field($input['anthropic_api_key']);
+            $clean_key = sanitize_text_field($input['anthropic_api_key']);
+            if (!empty($clean_key)) {
+                $sanitized['anthropic_api_key_encrypted'] = $this->encrypt_api_key($clean_key);
+                // Remove plain text version
+                unset($sanitized['anthropic_api_key']);
+            }
         }
         
         if (isset($input['google_api_key'])) {
-            $sanitized['google_api_key'] = sanitize_text_field($input['google_api_key']);
+            $clean_key = sanitize_text_field($input['google_api_key']);
+            if (!empty($clean_key)) {
+                $sanitized['google_ai_api_key_encrypted'] = $this->encrypt_api_key($clean_key);
+                // Remove plain text version
+                unset($sanitized['google_api_key']);
+            }
         }
         
         // Sanitize configuration settings
@@ -460,12 +475,15 @@ class WP_Content_Flow_Settings_Page {
      */
     public function render_openai_api_key_field() {
         $settings = get_option($this->option_name, array());
-        $value = isset($settings['openai_api_key']) ? $settings['openai_api_key'] : '';
+        $value = $this->get_api_key_for_display($settings, 'openai');
         ?>
-        <input type="password" name="<?php echo $this->option_name; ?>[openai_api_key]" value="<?php echo esc_attr($value); ?>" class="regular-text" />
+        <input type="password" name="<?php echo $this->option_name; ?>[openai_api_key]" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="<?php echo !empty($value) && strpos($value, '*') !== false ? __('Key configured - enter new key to change', 'wp-content-flow') : __('Enter OpenAI API key...', 'wp-content-flow'); ?>" />
         <p class="description">
             <?php _e('Enter your OpenAI API key. Get one from:', 'wp-content-flow'); ?> 
             <a href="https://platform.openai.com/api-keys" target="_blank">https://platform.openai.com/api-keys</a>
+            <?php if (!empty($value) && strpos($value, '*') !== false): ?>
+                <br><span style="color: #2271b1;">✓ <?php _e('API key is configured and encrypted', 'wp-content-flow'); ?></span>
+            <?php endif; ?>
         </p>
         <?php
     }
@@ -475,12 +493,15 @@ class WP_Content_Flow_Settings_Page {
      */
     public function render_anthropic_api_key_field() {
         $settings = get_option($this->option_name, array());
-        $value = isset($settings['anthropic_api_key']) ? $settings['anthropic_api_key'] : '';
+        $value = $this->get_api_key_for_display($settings, 'anthropic');
         ?>
-        <input type="password" name="<?php echo $this->option_name; ?>[anthropic_api_key]" value="<?php echo esc_attr($value); ?>" class="regular-text" />
+        <input type="password" name="<?php echo $this->option_name; ?>[anthropic_api_key]" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="<?php echo !empty($value) && strpos($value, '*') !== false ? __('Key configured - enter new key to change', 'wp-content-flow') : __('Enter Anthropic API key...', 'wp-content-flow'); ?>" />
         <p class="description">
             <?php _e('Enter your Anthropic API key. Get one from:', 'wp-content-flow'); ?> 
             <a href="https://console.anthropic.com/" target="_blank">https://console.anthropic.com/</a>
+            <?php if (!empty($value) && strpos($value, '*') !== false): ?>
+                <br><span style="color: #2271b1;">✓ <?php _e('API key is configured and encrypted', 'wp-content-flow'); ?></span>
+            <?php endif; ?>
         </p>
         <?php
     }
@@ -490,12 +511,15 @@ class WP_Content_Flow_Settings_Page {
      */
     public function render_google_api_key_field() {
         $settings = get_option($this->option_name, array());
-        $value = isset($settings['google_api_key']) ? $settings['google_api_key'] : '';
+        $value = $this->get_api_key_for_display($settings, 'google_ai');
         ?>
-        <input type="password" name="<?php echo $this->option_name; ?>[google_api_key]" value="<?php echo esc_attr($value); ?>" class="regular-text" />
+        <input type="password" name="<?php echo $this->option_name; ?>[google_api_key]" value="<?php echo esc_attr($value); ?>" class="regular-text" placeholder="<?php echo !empty($value) && strpos($value, '*') !== false ? __('Key configured - enter new key to change', 'wp-content-flow') : __('Enter Google AI API key...', 'wp-content-flow'); ?>" />
         <p class="description">
             <?php _e('Enter your Google AI API key. Get one from:', 'wp-content-flow'); ?> 
             <a href="https://makersuite.google.com/app/apikey" target="_blank">https://makersuite.google.com/app/apikey</a>
+            <?php if (!empty($value) && strpos($value, '*') !== false): ?>
+                <br><span style="color: #2271b1;">✓ <?php _e('API key is configured and encrypted', 'wp-content-flow'); ?></span>
+            <?php endif; ?>
         </p>
         <?php
     }
@@ -561,6 +585,128 @@ class WP_Content_Flow_Settings_Page {
             <?php _e('Maximum number of AI requests per minute to prevent rate limiting.', 'wp-content-flow'); ?>
         </p>
         <?php
+    }
+    
+    /**
+     * Encrypt API key for secure storage
+     */
+    private function encrypt_api_key($key) {
+        if (empty($key)) {
+            return '';
+        }
+        
+        // Use WordPress salts for encryption key base
+        $encryption_key = wp_salt('secure_auth') . wp_salt('logged_in');
+        $encryption_key = hash('sha256', $encryption_key);
+        
+        // Generate a random IV
+        $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length('aes-256-cbc'));
+        
+        // Encrypt the API key
+        $encrypted = openssl_encrypt($key, 'aes-256-cbc', $encryption_key, 0, $iv);
+        
+        // Return base64 encoded IV + encrypted data
+        return base64_encode($iv . $encrypted);
+    }
+    
+    /**
+     * Decrypt API key for use
+     */
+    private function decrypt_api_key($encrypted_key) {
+        if (empty($encrypted_key)) {
+            return '';
+        }
+        
+        // Use same encryption key as encrypt method
+        $encryption_key = wp_salt('secure_auth') . wp_salt('logged_in');
+        $encryption_key = hash('sha256', $encryption_key);
+        
+        // Decode the encrypted data
+        $data = base64_decode($encrypted_key);
+        if ($data === false) {
+            return '';
+        }
+        
+        // Extract IV and encrypted content
+        $iv_length = openssl_cipher_iv_length('aes-256-cbc');
+        $iv = substr($data, 0, $iv_length);
+        $encrypted = substr($data, $iv_length);
+        
+        // Decrypt the API key
+        $decrypted = openssl_decrypt($encrypted, 'aes-256-cbc', $encryption_key, 0, $iv);
+        
+        return $decrypted;
+    }
+    
+    /**
+     * Get API key for display (show partial key if encrypted)
+     */
+    private function get_api_key_for_display($settings, $provider) {
+        $encrypted_key = $settings[$provider . '_api_key_encrypted'] ?? '';
+        $plain_key = $settings[$provider . '_api_key'] ?? '';
+        
+        if (!empty($encrypted_key)) {
+            // Show partial encrypted key for security
+            $decrypted = $this->decrypt_api_key($encrypted_key);
+            if (!empty($decrypted)) {
+                // Show first 4 and last 4 characters with asterisks in between
+                if (strlen($decrypted) > 8) {
+                    return substr($decrypted, 0, 4) . str_repeat('*', 20) . substr($decrypted, -4);
+                } else {
+                    return str_repeat('*', strlen($decrypted));
+                }
+            }
+        }
+        
+        // If we have a plain key but no encrypted version, mask it for security
+        if (!empty($plain_key)) {
+            // Auto-encrypt plain text keys for future security
+            $this->migrate_plain_key_to_encrypted($provider, $plain_key);
+            
+            // Show masked version
+            if (strlen($plain_key) > 8) {
+                return substr($plain_key, 0, 4) . str_repeat('*', 20) . substr($plain_key, -4);
+            } else {
+                return str_repeat('*', strlen($plain_key));
+            }
+        }
+        
+        return '';
+    }
+    
+    /**
+     * Migrate plain text API key to encrypted storage
+     */
+    private function migrate_plain_key_to_encrypted($provider, $plain_key) {
+        $settings = get_option($this->option_name, array());
+        
+        // Only migrate if we don't already have an encrypted version
+        if (empty($settings[$provider . '_api_key_encrypted'])) {
+            $encrypted_key = $this->encrypt_api_key($plain_key);
+            if (!empty($encrypted_key)) {
+                // Save encrypted version and remove plain text
+                $settings[$provider . '_api_key_encrypted'] = $encrypted_key;
+                unset($settings[$provider . '_api_key']);
+                
+                update_option($this->option_name, $settings);
+                error_log("WP Content Flow: Migrated {$provider} API key to encrypted storage");
+            }
+        }
+    }
+    
+    /**
+     * Get decrypted API key for use by providers (public method)
+     */
+    public function get_decrypted_api_key($provider) {
+        $settings = get_option($this->option_name, array());
+        $encrypted_key = $settings[$provider . '_api_key_encrypted'] ?? '';
+        $plain_key = $settings[$provider . '_api_key'] ?? '';
+        
+        if (!empty($encrypted_key)) {
+            return $this->decrypt_api_key($encrypted_key);
+        }
+        
+        return $plain_key;
     }
     
     /**
