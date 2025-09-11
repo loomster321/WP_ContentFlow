@@ -14,6 +14,83 @@ WordPress AI Content Flow Plugin - An AI-powered content workflow system that in
 - Screenshots may show WordPress admin interfaces, error messages, or setup instructions
 - Use these screenshots to understand current project state and user requirements
 
+## Functional Requirements & Living Documentation
+
+**CRITICAL: These are LIVING DOCUMENTS that must be actively maintained throughout development.**
+
+### Living Documentation Philosophy
+- **Single Source of Truth**: These documents define the authoritative project requirements and plans
+- **Update BEFORE Implementation**: Always update documentation before making code changes
+- **Real-time Progress Tracking**: Mark tasks complete immediately as work is finished
+- **Continuous Evolution**: Documents grow with the project - add new requirements, decisions, and learnings
+
+### Core Specification Documents
+
+Located in `specs/002-i-want-to/`:
+
+#### Primary Documents (Update Frequently)
+- **spec.md** - Functional Requirements (FR-001 through FR-014)
+  - ADD new requirements with sequential numbering (FR-015, FR-016, etc.)
+  - UPDATE when requirements change or evolve
+  - MARK deprecated requirements rather than deleting
+  
+- **tasks.md** - Implementation Task Breakdown
+  - MARK [x] complete immediately when tasks are finished
+  - ADD new tasks as discovered during implementation
+  - UPDATE task descriptions if scope changes
+  - TRACK blockers and dependencies
+
+- **plan.md** - Technical Implementation Plan
+  - UPDATE when architecture decisions change
+  - DOCUMENT deviations from original plan
+  - ADD new technical decisions and rationale
+
+#### Supporting Documents (Update as Needed)
+- **data-model.md** - Database Schema & Entity Definitions
+  - UPDATE before modifying database structure
+  - VERSION schema changes with migration notes
+  - DOCUMENT relationships and constraints
+
+- **quickstart.md** - Getting Started Guide
+  - UPDATE when setup process changes
+  - ADD troubleshooting for common issues
+  - MAINTAIN current with actual setup steps
+
+- **research.md** - Technical Research & Decisions
+  - ADD new findings and investigations
+  - DOCUMENT alternatives considered
+  - RECORD decision rationale
+
+- **contracts/** - API Contract Specifications
+  - VERSION contracts when breaking changes occur
+  - UPDATE before implementing API changes
+  - MAINTAIN backward compatibility notes
+
+### Document Maintenance Policy
+
+#### When Adding Features
+1. FIRST update spec.md with new FR-XXX requirement
+2. UPDATE plan.md if architecture is affected
+3. ADD tasks to tasks.md before starting work
+4. UPDATE data-model.md for any schema changes
+
+#### During Implementation
+1. MARK tasks [x] complete in tasks.md immediately upon completion
+2. UPDATE spec.md if requirements need clarification
+3. ADD to research.md for technical decisions made
+4. DOCUMENT blockers and resolutions
+
+#### When Making Changes
+- **Breaking Changes**: Update ALL affected documents first
+- **Bug Fixes**: Note in tasks.md if not already tracked
+- **Performance Improvements**: Document in research.md
+- **Security Updates**: Add to spec.md security requirements
+
+#### Git Commit Practice
+- Include document updates in same commit as related code
+- Use commit messages like: "Update FR-007 and implement collaborative editing"
+- Tag major requirement changes for version tracking
+
 ## CRITICAL: Specialized Subagents
 
 **Use the general-purpose subagent via the Task tool, referencing specialized agents in `.claude/agents/` for domain-specific work:**
@@ -212,6 +289,15 @@ npm run docker:down
 │       ├── wordpress-playwright-expert.md   # WordPress E2E testing expert
 │       ├── ai-validation-expert.md          # AI provider validation expert
 │       └── performance-testing-expert.md    # Performance optimization expert
+├── specs/                          # LIVING DOCUMENTATION - Must be kept current!
+│   └── 002-i-want-to/              # Feature specifications and plans
+│       ├── spec.md                 # Functional requirements (FR-001 to FR-014+)
+│       ├── plan.md                 # Technical implementation plan
+│       ├── tasks.md                # Task breakdown (mark complete as you work!)
+│       ├── data-model.md           # Database schema definitions
+│       ├── quickstart.md           # Getting started guide
+│       ├── research.md             # Technical decisions and findings
+│       └── contracts/              # API contract specifications
 ├── wp-content-flow/                 # WordPress plugin directory
 │   ├── wp-content-flow.php         # Main plugin file
 │   ├── includes/                   # PHP classes
