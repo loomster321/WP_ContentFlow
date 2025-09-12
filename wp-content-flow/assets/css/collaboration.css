@@ -1,0 +1,34 @@
+/**
+ * WordPress AI Content Flow - Collaboration Styles
+ * Placeholder for future collaboration UI styles
+ */
+
+/* Collaboration UI placeholder styles */
+.wp-content-flow-collaboration {
+    /* Future styles for collaboration features */
+}
+
+/* User presence indicators (future feature) */
+.wp-content-flow-user-presence {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Shared queue UI (future feature) */
+.wp-content-flow-shared-queue {
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: #f9f9f9;
+}
+
+/* Team assignment badges (future feature) */
+.wp-content-flow-assignment-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: 12px;
+    border-radius: 3px;
+    background: #2271b1;
+    color: white;
+}

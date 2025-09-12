@@ -116,7 +116,8 @@ class WP_Content_Flow_Audit_Trail {
         add_action( 'wp_ajax_wp_content_flow_export_audit_trail', [ $this, 'ajax_export_audit_trail' ] );
         
         // Admin menu for audit trail
-        add_action( 'admin_menu', [ $this, 'add_admin_menu' ] );
+        // Add with priority 20 to ensure parent menu exists
+        add_action( 'admin_menu', [ $this, 'add_admin_menu' ], 20 );
         
         // Schedule cleanup
         add_action( 'wp_content_flow_audit_cleanup', [ $this, 'cleanup_old_entries' ] );

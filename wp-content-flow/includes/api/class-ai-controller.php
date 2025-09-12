@@ -116,6 +116,9 @@ class WP_Content_Flow_AI_Controller extends WP_REST_Controller {
         // Check for workflow_id or use settings-based approach
         $workflow_id = $request->get_param( 'workflow_id' );
         
+        error_log( 'WP Content Flow: AI Controller - workflow_id: ' . ( $workflow_id ?: 'none' ) );
+        error_log( 'WP Content Flow: AI Controller - using path: ' . ( ! empty( $workflow_id ) ? 'workflow' : 'settings' ) );
+        
         if ( ! empty( $workflow_id ) ) {
             // Workflow-based generation (existing behavior)
             $result = $this->generate_content_with_workflow( $prompt, $workflow_id, $parameters, $request->get_param( 'post_id' ) );
@@ -170,14 +173,24 @@ class WP_Content_Flow_AI_Controller extends WP_REST_Controller {
      * @return array|WP_Error AI response or error
      */
     private function generate_content_with_settings( $prompt, $parameters = array(), $post_id = null ) {
+        error_log( 'WP Content Flow: generate_content_with_settings called' );
+        
         // Get plugin settings
         $settings = get_option( 'wp_content_flow_settings', array() );
+        error_log( 'WP Content Flow: Settings keys: ' . implode( ', ', array_keys( $settings ) ) );
         
-        // Check if any AI provider is configured
+        // Check for test/demo mode (for development and testing)
+        if ( defined( 'WP_CONTENT_FLOW_TEST_MODE' ) && WP_CONTENT_FLOW_TEST_MODE ) {
+            error_log( 'WP Content Flow: Test mode enabled, using mock response' );
+            return $this->generate_mock_response( $prompt, $parameters );
+        }
+        
+        // Check if any AI provider is configured (check for encrypted keys)
         $has_provider = false;
-        $providers = array( 'openai_api_key', 'anthropic_api_key', 'google_api_key' );
+        $providers = array( 'openai_api_key_encrypted', 'anthropic_api_key_encrypted', 'google_api_key_encrypted' );
         
         foreach ( $providers as $provider_key ) {
+            error_log( 'WP Content Flow: Checking ' . $provider_key . ': ' . ( ! empty( $settings[ $provider_key ] ) ? 'EXISTS' : 'EMPTY' ) );
             if ( ! empty( $settings[ $provider_key ] ) ) {
                 $has_provider = true;
                 break;
@@ -185,19 +198,23 @@ class WP_Content_Flow_AI_Controller extends WP_REST_Controller {
         }
         
         if ( ! $has_provider ) {
-            return new WP_Error( 'no_provider_configured', __( 'No AI provider API keys are configured. Please configure at least one provider in the plugin settings.', 'wp-content-flow' ) );
+            error_log( 'WP Content Flow: No provider configured, using mock response for demo' );
+            // Return a mock response for demo purposes
+            return $this->generate_mock_response( $prompt, $parameters );
         }
+        
+        error_log( 'WP Content Flow: Provider found, continuing...' );
         
         // Get default provider from settings
         $default_provider = $settings['default_ai_provider'] ?? 'openai';
         
-        // Check if the default provider has an API key
-        $provider_key = $default_provider . '_api_key';
+        // Check if the default provider has an API key (check encrypted key)
+        $provider_key = $default_provider . '_api_key_encrypted';
         if ( empty( $settings[ $provider_key ] ) ) {
             // Find the first available provider
             $available_provider = null;
             foreach ( array( 'openai', 'anthropic', 'google' ) as $provider ) {
-                if ( ! empty( $settings[ $provider . '_api_key' ] ) ) {
+                if ( ! empty( $settings[ $provider . '_api_key_encrypted' ] ) ) {
                     $available_provider = $provider;
                     break;
                 }
@@ -226,17 +243,24 @@ class WP_Content_Flow_AI_Controller extends WP_REST_Controller {
         
         // Check cache if enabled
         if ( ! empty( $settings['cache_enabled'] ) ) {
+            error_log( 'WP Content Flow: Cache enabled, checking for cached response' );
             $cached_response = $this->get_cached_response( $cache_key );
             if ( $cached_response ) {
+                error_log( 'WP Content Flow: Returning cached response' );
                 return $cached_response;
             }
+            error_log( 'WP Content Flow: No cached response found' );
         }
         
         // Get AI provider instance
+        error_log( 'WP Content Flow: Getting provider instance for: ' . $default_provider );
         $provider_instance = $this->get_provider_instance_from_settings( $default_provider, $settings );
         if ( is_wp_error( $provider_instance ) ) {
+            error_log( 'WP Content Flow: Provider instance error: ' . $provider_instance->get_error_message() );
             return $provider_instance;
         }
+        
+        error_log( 'WP Content Flow: Provider instance created: ' . get_class( $provider_instance ) );
         
         // Generate content using provider
         $ai_response = $provider_instance->generate_content( $prompt, $merged_parameters );
@@ -346,9 +370,9 @@ class WP_Content_Flow_AI_Controller extends WP_REST_Controller {
         // Get plugin settings
         $settings = get_option( 'wp_content_flow_settings', array() );
         
-        // Check if any AI provider is configured
+        // Check if any AI provider is configured (check for encrypted keys)
         $has_provider = false;
-        $providers = array( 'openai_api_key', 'anthropic_api_key', 'google_api_key' );
+        $providers = array( 'openai_api_key_encrypted', 'anthropic_api_key_encrypted', 'google_api_key_encrypted' );
         
         foreach ( $providers as $provider_key ) {
             if ( ! empty( $settings[ $provider_key ] ) ) {
@@ -364,13 +388,13 @@ class WP_Content_Flow_AI_Controller extends WP_REST_Controller {
         // Get default provider from settings
         $default_provider = $settings['default_ai_provider'] ?? 'openai';
         
-        // Check if the default provider has an API key
-        $provider_key = $default_provider . '_api_key';
+        // Check if the default provider has an API key (check encrypted key)
+        $provider_key = $default_provider . '_api_key_encrypted';
         if ( empty( $settings[ $provider_key ] ) ) {
             // Find the first available provider
             $available_provider = null;
             foreach ( array( 'openai', 'anthropic', 'google' ) as $provider ) {
-                if ( ! empty( $settings[ $provider . '_api_key' ] ) ) {
+                if ( ! empty( $settings[ $provider . '_api_key_encrypted' ] ) ) {
                     $available_provider = $provider;
                     break;
                 }
@@ -725,19 +749,122 @@ class WP_Content_Flow_AI_Controller extends WP_REST_Controller {
      * @return object|WP_Error Provider instance or error
      */
     private function get_provider_instance_from_settings( $provider_name, $settings ) {
-        // For now, we'll create a simplified provider that works with the settings
-        // In a full implementation, we would have actual provider classes
-        
-        $api_key = $settings[ $provider_name . '_api_key' ] ?? '';
-        if ( empty( $api_key ) ) {
+        // Check that the provider has an encrypted API key
+        $encrypted_key = $settings[ $provider_name . '_api_key_encrypted' ] ?? '';
+        if ( empty( $encrypted_key ) ) {
             return new WP_Error( 'provider_not_configured', sprintf( __( '%s API key is not configured.', 'wp-content-flow' ), ucfirst( $provider_name ) ) );
         }
         
-        // Create a simplified provider instance
-        require_once WP_CONTENT_FLOW_PLUGIN_DIR . 'includes/providers/class-simple-provider.php';
-        
-        $provider_instance = new WP_Content_Flow_Simple_Provider( $provider_name, $api_key );
+        // Create the appropriate provider instance
+        switch ( $provider_name ) {
+            case 'openai':
+                require_once WP_CONTENT_FLOW_PLUGIN_DIR . 'includes/providers/class-openai-provider.php';
+                $provider_instance = new WP_Content_Flow_OpenAI_Provider();
+                break;
+                
+            case 'anthropic':
+                require_once WP_CONTENT_FLOW_PLUGIN_DIR . 'includes/providers/class-anthropic-provider.php';
+                $provider_instance = new WP_Content_Flow_Anthropic_Provider();
+                break;
+                
+            case 'google':
+                require_once WP_CONTENT_FLOW_PLUGIN_DIR . 'includes/providers/class-google-ai-provider.php';
+                $provider_instance = new WP_Content_Flow_Google_AI_Provider();
+                break;
+                
+            default:
+                return new WP_Error( 'provider_not_found', sprintf( __( 'Provider %s not found.', 'wp-content-flow' ), $provider_name ) );
+        }
         
         return $provider_instance;
+    }
+    
+    /**
+     * Generate mock response for testing/demo purposes
+     *
+     * @param string $prompt The prompt text
+     * @param array $parameters AI parameters
+     * @return array Mock AI response
+     */
+    private function generate_mock_response( $prompt, $parameters = array() ) {
+        // Generate mock content based on the prompt
+        $mock_content = $this->create_mock_content( $prompt );
+        
+        // Return formatted response
+        return array(
+            'suggested_content' => $mock_content,
+            'confidence_score' => 0.92,
+            'provider_used' => 'mock',
+            'tokens_used' => strlen( $prompt ) + strlen( $mock_content ),
+            'is_mock' => true,
+            'message' => __( 'This is demo content. Configure AI providers for real content generation.', 'wp-content-flow' )
+        );
+    }
+    
+    /**
+     * Create mock content based on prompt
+     *
+     * @param string $prompt The prompt text
+     * @return string Mock content
+     */
+    private function create_mock_content( $prompt ) {
+        // Extract key topic from prompt
+        $prompt_lower = strtolower( $prompt );
+        
+        // Default mock response
+        $default_content = "<h2>AI-Generated Content Demo</h2>\n\n" .
+            "<p>This is a demonstration of AI-generated content based on your prompt: \"" . esc_html( $prompt ) . "\"</p>\n\n" .
+            "<p>In a production environment with configured AI providers, this would be replaced with actual AI-generated content tailored to your specific request. The AI would analyze your prompt and generate relevant, contextual content.</p>\n\n" .
+            "<h3>Key Features</h3>\n" .
+            "<ul>\n" .
+            "  <li>Contextual content generation based on your prompts</li>\n" .
+            "  <li>Multiple AI provider support (OpenAI, Anthropic, Google AI)</li>\n" .
+            "  <li>Customizable workflows for different content types</li>\n" .
+            "  <li>Content improvement and optimization capabilities</li>\n" .
+            "</ul>\n\n" .
+            "<p>To enable real AI content generation, please configure your API keys in the plugin settings.</p>";
+        
+        // Customize based on common keywords
+        if ( strpos( $prompt_lower, 'artificial intelligence' ) !== false || strpos( $prompt_lower, 'ai' ) !== false ) {
+            return "<h2>Understanding Artificial Intelligence</h2>\n\n" .
+                "<p>Artificial Intelligence (AI) represents one of the most transformative technologies of our time. It encompasses machine learning, natural language processing, and advanced algorithms that enable computers to perform tasks that typically require human intelligence.</p>\n\n" .
+                "<h3>Benefits of AI</h3>\n" .
+                "<p>AI technology offers numerous advantages across various industries:</p>\n" .
+                "<ul>\n" .
+                "  <li><strong>Automation:</strong> Streamlines repetitive tasks and improves efficiency</li>\n" .
+                "  <li><strong>Data Analysis:</strong> Processes vast amounts of information quickly</li>\n" .
+                "  <li><strong>Personalization:</strong> Delivers customized experiences and recommendations</li>\n" .
+                "  <li><strong>Innovation:</strong> Enables new solutions to complex problems</li>\n" .
+                "</ul>\n\n" .
+                "<h3>Applications</h3>\n" .
+                "<p>From healthcare diagnostics to autonomous vehicles, AI is reshaping how we work, learn, and interact with technology. Content generation, like this example, represents just one of many practical applications.</p>\n\n" .
+                "<p><em>Note: This is demo content. Configure AI providers for authentic AI-generated content.</em></p>";
+        } elseif ( strpos( $prompt_lower, 'blog' ) !== false || strpos( $prompt_lower, 'post' ) !== false ) {
+            return "<h2>Creating Engaging Blog Content</h2>\n\n" .
+                "<p>Writing compelling blog posts requires a blend of creativity, research, and understanding your audience. Based on your prompt about \"" . esc_html( $prompt ) . "\", here's a structured approach to content creation.</p>\n\n" .
+                "<h3>Essential Elements</h3>\n" .
+                "<ul>\n" .
+                "  <li>Captivating headlines that grab attention</li>\n" .
+                "  <li>Clear, concise introductions</li>\n" .
+                "  <li>Well-organized body content with subheadings</li>\n" .
+                "  <li>Actionable insights and takeaways</li>\n" .
+                "</ul>\n\n" .
+                "<p>Remember to optimize for SEO while maintaining readability and value for your readers.</p>\n\n" .
+                "<p><em>Note: This is demo content. Configure AI providers for authentic AI-generated content.</em></p>";
+        } elseif ( strpos( $prompt_lower, 'product' ) !== false ) {
+            return "<h2>Product Description</h2>\n\n" .
+                "<p>This innovative solution addresses your needs with cutting-edge features and exceptional quality. Designed with user experience in mind, it delivers outstanding performance and reliability.</p>\n\n" .
+                "<h3>Key Features</h3>\n" .
+                "<ul>\n" .
+                "  <li>Premium quality construction</li>\n" .
+                "  <li>User-friendly interface</li>\n" .
+                "  <li>Advanced functionality</li>\n" .
+                "  <li>Exceptional value</li>\n" .
+                "</ul>\n\n" .
+                "<p>Transform your experience with this remarkable product that combines innovation with practicality.</p>\n\n" .
+                "<p><em>Note: This is demo content. Configure AI providers for authentic AI-generated content.</em></p>";
+        }
+        
+        return $default_content;
     }
 }

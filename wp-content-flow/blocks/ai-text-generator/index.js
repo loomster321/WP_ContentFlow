@@ -21,14 +21,15 @@ import { __ } from '@wordpress/i18n';
 import { useSelect, useDispatch } from '@wordpress/data';
 import { useState, useEffect } from '@wordpress/element';
 import apiFetch from '@wordpress/api-fetch';
-import { brain, update } from '@wordpress/icons';
+// Use a simple string icon for now to avoid import issues
+const aiIcon = 'admin-generic';
 
 // Block configuration matching contract from test_ai_text_block.js
 const AI_TEXT_BLOCK_CONTRACT = {
     name: 'wp-content-flow/ai-text',
     title: __( 'AI Text Generator', 'wp-content-flow' ),
     category: 'text',
-    icon: brain,
+    icon: aiIcon,
     description: __( 'Generate content using AI with customizable workflows and prompts.', 'wp-content-flow' ),
     keywords: [ __( 'ai', 'wp-content-flow' ), __( 'content', 'wp-content-flow' ), __( 'generate', 'wp-content-flow' ) ],
     supports: {
@@ -231,13 +232,13 @@ function EditComponent( { attributes, setAttributes, isSelected } ) {
             <BlockControls>
                 <ToolbarGroup>
                     <ToolbarButton
-                        icon={ update }
+                        icon="controls-repeat"
                         label={ __( 'Regenerate', 'wp-content-flow' ) }
                         onClick={ handleRegenerate }
                         disabled={ isGenerating || ! content }
                     />
                     <ToolbarButton
-                        icon={ brain }
+                        icon="edit"
                         label={ __( 'Improve', 'wp-content-flow' ) }
                         onClick={ () => handleImprove( 'style' ) }
                         disabled={ isGenerating || ! content }

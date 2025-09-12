@@ -25,7 +25,11 @@ import {
 import { useState, useEffect, useCallback } from '@wordpress/element';
 import { useSelect, useDispatch } from '@wordpress/data';
 import apiFetch from '@wordpress/api-fetch';
-import { settings, check, close, plus } from '@wordpress/icons';
+// Use simple text icons instead of imports to avoid bundle issues
+const settingsIcon = '⚙️';
+const checkIcon = '✓';
+const closeIcon = '✕';
+const plusIcon = '+';
 
 /**
  * Workflow Settings Panel Component
@@ -390,10 +394,8 @@ export function WorkflowSettingsPanel() {
                             variant="primary"
                             onClick={handleCreateWorkflow}
                             disabled={isLoading || !newWorkflow.name.trim()}
-                            icon={isLoading ? undefined : plus}
                         >
-                            {isLoading ? <Spinner /> : null}
-                            {__('Create Workflow', 'wp-content-flow')}
+                            {isLoading ? <Spinner /> : plusIcon} {__('Create Workflow', 'wp-content-flow')}
                         </Button>
                     </PanelBody>
                     
@@ -485,10 +487,8 @@ export function WorkflowSettingsPanel() {
                     variant="primary"
                     onClick={saveSettings}
                     disabled={isLoading || !isDirty}
-                    icon={isLoading ? undefined : check}
                 >
-                    {isLoading ? <Spinner /> : null}
-                    {__('Save Settings', 'wp-content-flow')}
+                    {isLoading ? <Spinner /> : checkIcon} {__('Save Settings', 'wp-content-flow')}
                 </Button>
                 
                 {isDirty && (

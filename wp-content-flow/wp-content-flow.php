@@ -267,21 +267,15 @@ class WP_Content_Flow {
      * Enqueue block editor assets
      */
     public function enqueue_block_editor_assets() {
-        // Enqueue the AI Text Generator block script
-        wp_enqueue_script(
-            'wp-content-flow-ai-text-block',
-            WP_CONTENT_FLOW_PLUGIN_URL . 'blocks/ai-text-generator/index.js',
-            array( 'wp-blocks', 'wp-element', 'wp-editor', 'wp-components', 'wp-data', 'wp-i18n', 'wp-api-fetch', 'wp-icons' ),
-            WP_CONTENT_FLOW_VERSION,
-            true
-        );
+        // Load main blocks dependencies - this includes all blocks and sidebar panels
+        $main_blocks_asset = include( WP_CONTENT_FLOW_PLUGIN_DIR . 'build/blocks.asset.php' );
         
-        // Enqueue the main blocks script for sidebar panels
+        // Enqueue the main blocks script (includes AI text generator block and sidebar panels)
         wp_enqueue_script(
             'wp-content-flow-blocks',
-            WP_CONTENT_FLOW_PLUGIN_URL . 'assets/js/blocks.js',
-            array( 'wp-blocks', 'wp-element', 'wp-editor', 'wp-components', 'wp-data', 'wp-plugins', 'wp-edit-post' ),
-            WP_CONTENT_FLOW_VERSION,
+            WP_CONTENT_FLOW_PLUGIN_URL . 'build/blocks.js',
+            $main_blocks_asset['dependencies'],
+            $main_blocks_asset['version'],
             true
         );
         
@@ -292,16 +286,113 @@ class WP_Content_Flow {
             WP_CONTENT_FLOW_VERSION
         );
         
-        // Localize script with API data
-        wp_localize_script(
-            'wp-content-flow-blocks',
-            'wpContentFlow',
-            array(
-                'apiUrl' => rest_url( 'wp-content-flow/v1/' ),
-                'nonce' => wp_create_nonce( 'wp_rest' ),
-                'version' => WP_CONTENT_FLOW_VERSION,
-            )
+        // Localize script with API data for both scripts
+        $localize_data = array(
+            'apiUrl' => rest_url( 'wp-content-flow/v1/' ),
+            'nonce' => wp_create_nonce( 'wp_rest' ),
+            'version' => WP_CONTENT_FLOW_VERSION,
+            'defaultWorkflows' => $this->get_default_workflows_for_js(),
         );
+        
+        wp_localize_script( 'wp-content-flow-blocks', 'wpContentFlow', $localize_data );
+        wp_localize_script( 'wp-content-flow-ai-text-block', 'wpContentFlow', $localize_data );
+        
+        // Register workflow data store
+        wp_add_inline_script( 'wp-content-flow-blocks', $this->get_workflow_store_script(), 'before' );
+    }
+    
+    /**
+     * Get default workflows for JavaScript
+     */
+    private function get_default_workflows_for_js() {
+        return [
+            [
+                'id' => 1,
+                'name' => 'Blog Post Workflow',
+                'description' => 'Generate comprehensive blog posts',
+                'ai_provider' => 'openai',
+                'status' => 'active'
+            ],
+            [
+                'id' => 2,
+                'name' => 'Product Description',
+                'description' => 'Create product descriptions',
+                'ai_provider' => 'openai',
+                'status' => 'active'
+            ],
+            [
+                'id' => 3,
+                'name' => 'Social Media Content',
+                'description' => 'Generate social media posts',
+                'ai_provider' => 'openai',
+                'status' => 'active'
+            ]
+        ];
+    }
+    
+    /**
+     * Get workflow data store registration script
+     */
+    private function get_workflow_store_script() {
+        return "
+        (function() {
+            if (typeof wp !== 'undefined' && wp.data) {
+                // Register the workflows data store
+                const { createReduxStore, register } = wp.data;
+                
+                const DEFAULT_STATE = {
+                    workflows: " . json_encode($this->get_default_workflows_for_js()) . ",
+                    isLoading: false,
+                    error: null
+                };
+                
+                const actions = {
+                    setWorkflows(workflows) {
+                        return { type: 'SET_WORKFLOWS', workflows };
+                    },
+                    setLoading(isLoading) {
+                        return { type: 'SET_LOADING', isLoading };
+                    },
+                    setError(error) {
+                        return { type: 'SET_ERROR', error };
+                    }
+                };
+                
+                const selectors = {
+                    getWorkflows(state) {
+                        return state.workflows;
+                    },
+                    getActiveWorkflows(state) {
+                        return state.workflows.filter(w => w.status === 'active');
+                    },
+                    isLoading(state) {
+                        return state.isLoading;
+                    }
+                };
+                
+                function reducer(state = DEFAULT_STATE, action) {
+                    switch (action.type) {
+                        case 'SET_WORKFLOWS':
+                            return { ...state, workflows: action.workflows };
+                        case 'SET_LOADING':
+                            return { ...state, isLoading: action.isLoading };
+                        case 'SET_ERROR':
+                            return { ...state, error: action.error };
+                        default:
+                            return state;
+                    }
+                }
+                
+                const store = createReduxStore('wp-content-flow/workflows', {
+                    reducer,
+                    actions,
+                    selectors
+                });
+                
+                register(store);
+            }
+        })();
+        ";
     }
     
     /**
@@ -333,6 +424,9 @@ class WP_Content_Flow {
     public function activate() {
         // Create database tables
         $this->create_database_tables();
+        
+        // Seed default workflows
+        $this->seed_default_data();
         
         // Set default options
         $this->set_default_options();
@@ -419,6 +513,21 @@ class WP_Content_Flow {
         
         // Fire action for extensibility
         do_action( 'wp_content_flow_database_created', $table_creation_results );
+    }
+    
+    /**
+     * Seed default data
+     */
+    private function seed_default_data() {
+        // Load seed file
+        require_once WP_CONTENT_FLOW_PLUGIN_DIR . 'includes/database/seed-workflows.php';
+        
+        // Seed default workflows
+        $result = wp_content_flow_seed_default_workflows();
+        
+        if ( ! $result ) {
+            error_log( 'WP Content Flow: Failed to seed default workflows during activation' );
+        }
     }
     
     /**

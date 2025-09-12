@@ -7,11 +7,14 @@
 
 import { __ } from '@wordpress/i18n';
 import { Button, Popover, ButtonGroup, Spinner } from '@wordpress/components';
-import { useState, useEffect } from '@wordpress/element';
+import { useState, useEffect, render, createElement } from '@wordpress/element';
 import { useSelect, useDispatch } from '@wordpress/data';
 import { create, insert, toHTMLString } from '@wordpress/rich-text';
 import apiFetch from '@wordpress/api-fetch';
-import { brain, check, close } from '@wordpress/icons';
+// Use simple text icons instead of imports to avoid bundle issues
+const brainIcon = '🧠';
+const checkIcon = '✓';  
+const closeIcon = '✕';
 
 /**
  * Content Improvement Toolbar Component
@@ -193,10 +196,11 @@ export function ContentImprovementToolbar() {
                     <div className="toolbar-error">
                         <span>{ error }</span>
                         <Button
-                            icon={ close }
                             size="small"
                             onClick={ () => setError( '' ) }
-                        />
+                        >
+                            { closeIcon }
+                        </Button>
                     </div>
                 ) }
                 
@@ -214,10 +218,9 @@ export function ContentImprovementToolbar() {
                                     <Button
                                         size="small"
                                         variant="primary"
-                                        icon={ check }
                                         onClick={ () => applySuggestion( suggestion ) }
                                     >
-                                        { __( 'Apply', 'wp-content-flow' ) }
+                                        { checkIcon } { __( 'Apply', 'wp-content-flow' ) }
                                     </Button>
                                     <span className="confidence-score">
                                         { Math.round( suggestion.confidence_score * 100 ) }%
@@ -234,8 +237,7 @@ export function ContentImprovementToolbar() {
                 ) : (
                     <div className="improvement-options">
                         <div className="toolbar-header">
-                            <brain />
-                            <span>{ __( 'Improve with AI', 'wp-content-flow' ) }</span>
+                            <span>{ brainIcon } { __( 'Improve with AI', 'wp-content-flow' ) }</span>
                         </div>
                         <ButtonGroup>
                             <Button
@@ -290,15 +292,13 @@ export function ContentImprovementToolbar() {
 document.addEventListener( 'DOMContentLoaded', () => {
     // Only initialize in the block editor
     if ( document.querySelector( '.block-editor-page' ) ) {
-        const { render } = wp.element;
-        
         // Create container for the toolbar
         const toolbarContainer = document.createElement( 'div' );
         toolbarContainer.id = 'wp-content-flow-improvement-toolbar';
         document.body.appendChild( toolbarContainer );
         
         // Render the toolbar
-        render( wp.element.createElement( ContentImprovementToolbar ), toolbarContainer );
+        render( createElement( ContentImprovementToolbar ), toolbarContainer );
     }
 } );
 

@@ -1,0 +1,183 @@
+#!/bin/bash
+
+# GI-Plan - GitHub Issue Planning with Automated Replication Testing
+# Usage: /gi-plan <issue_number>
+
+set -euo pipefail
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Function to print colored output
+print_color() {
+    local color=$1
+    shift
+    echo -e "${color}$@${NC}" >&2
+}
+
+# Function to get repository info
+get_repo_info() {
+    # Try to get repo info from gh, fallback to default
+    local repo_json=$(gh repo view --json name,owner 2>/dev/null || echo '{}')
+    if [[ "$repo_json" != "{}" ]]; then
+        # Parse JSON without jq using grep and sed
+        local owner=$(echo "$repo_json" | grep -oP '"login":"\K[^"]+' | head -1)
+        local name=$(echo "$repo_json" | grep -oP '"name":"\K[^"]+' | head -1)
+        if [[ -n "$owner" && -n "$name" ]]; then
+            echo "$owner/$name"
+        else
+            echo "loomster321/WP_ContentFlow"
+        fi
+    else
+        echo "loomster321/WP_ContentFlow"
+    fi
+}
+
+# Function to fetch issue details
+fetch_issue() {
+    local issue_number=$1
+    local repo=$(get_repo_info)
+    
+    print_color $BLUE "📋 Fetching issue #$issue_number from $repo..."
+    
+    # Get issue details including body and comments
+    gh issue view $issue_number --repo $repo --json title,body,labels,state,comments,author,createdAt 2>/dev/null
+}
+
+# Function to check for screenshots in issue
+check_screenshots() {
+    local issue_body="$1"
+    local comments="$2"
+    
+    print_color $YELLOW "🖼️  Checking for screenshots..."
+    
+    # Check for image references in body and comments
+    local screenshots=""
+    
+    # Check body for images
+    if echo "$issue_body" | grep -qE '\!\[.*\]\(.*\)|<img.*src=|\.png|\.jpg|\.jpeg|\.gif'; then
+        screenshots="found"
+        print_color $GREEN "✓ Screenshots found in issue description"
+    fi
+    
+    # Check comments for images
+    if echo "$comments" | grep -qE '\!\[.*\]\(.*\)|<img.*src=|\.png|\.jpg|\.jpeg|\.gif'; then
+        screenshots="found"
+        print_color $GREEN "✓ Screenshots found in comments"
+    fi
+    
+    # Check tmp directory for related screenshots
+    if ls /home/timl/dev/WP_ContentFlow/tmp/*.png 2>/dev/null | head -1 > /dev/null; then
+        screenshots="found"
+        print_color $GREEN "✓ Screenshots found in tmp directory"
+    fi
+    
+    if [[ -z "$screenshots" ]]; then
+        print_color $YELLOW "⚠ No screenshots found"
+    fi
+    
+    echo "$screenshots"
+}
+
+# Main function
+main() {
+    if [[ $# -eq 0 ]]; then
+        print_color $RED "❌ Error: Issue number required"
+        echo "Usage: /gi-plan <issue_number>"
+        echo "Example: /gi-plan 42"
+        exit 1
+    fi
+    
+    local issue_number=$1
+    local repo=$(get_repo_info)
+    
+    print_color $GREEN "🚀 GitHub Issue Planning Tool"
+    print_color $GREEN "============================="
+    echo ""
+    
+    # Fetch issue details
+    local issue_json=$(fetch_issue $issue_number)
+    
+    if [[ -z "$issue_json" ]]; then
+        print_color $RED "❌ Failed to fetch issue #$issue_number"
+        exit 1
+    fi
+    
+    # Parse issue details without jq
+    local title=$(echo "$issue_json" | grep -oP '"title":"\K[^"]+' | head -1)
+    local body=$(echo "$issue_json" | grep -oP '"body":"\K[^"]+' | head -1 | sed 's/\\n/\n/g')
+    local state=$(echo "$issue_json" | grep -oP '"state":"\K[^"]+' | head -1)
+    
+    # Extract labels (more complex without jq)
+    local labels=""
+    if echo "$issue_json" | grep -q '"labels":\['; then
+        labels=$(echo "$issue_json" | grep -oP '"labels":\[.*?\]' | grep -oP '"name":"\K[^"]+' | tr '\n' ',' | sed 's/,$//')
+    fi
+    
+    # Extract comments (simplified)
+    local comments=""
+    if echo "$issue_json" | grep -q '"comments":\['; then
+        comments=$(echo "$issue_json" | grep -oP '"body":"\K[^"]+' | tail -n +2 | tr '\n' ' ')
+    fi
+    
+    print_color $GREEN "\n📊 Issue Details:"
+    echo "Title: $title"
+    echo "Number: #$issue_number"
+    echo "State: $state"
+    echo "Labels: ${labels:-none}"
+    echo ""
+    
+    # Check for screenshots
+    local has_screenshots=$(check_screenshots "$body" "$comments")
+    echo ""
+    
+    # Provide instructions for Claude to execute the plan
+    print_color $BLUE "🤖 Claude Action Required:"
+    print_color $BLUE "=========================="
+    echo ""
+    echo "Please analyze issue #$issue_number and follow these steps:"
+    echo ""
+    echo "1. REVIEW the issue description and any screenshots"
+    echo "   - Issue body and comments are provided above"
+    echo "   - Check /home/timl/dev/WP_ContentFlow/tmp/ for screenshots if mentioned"
+    echo ""
+    echo "2. ATTEMPT TO REPLICATE using Playwright"
+    echo "   - Write a Playwright test to reproduce the issue"
+    echo "   - Run the test in the WordPress Docker environment"
+    echo "   - Capture screenshots during test execution"
+    echo ""
+    echo "3. DETERMINE OUTCOME based on replication results:"
+    echo ""
+    echo "   IF CANNOT REPRODUCE:"
+    echo "   a) Apply 'cant-reproduce' label:"
+    echo "      gh issue edit $issue_number --add-label 'cant-reproduce' --repo $repo"
+    echo ""
+    echo "   b) Add comment with reproduction attempt details:"
+    echo "      gh issue comment $issue_number --repo $repo --body 'comment'"
+    echo ""
+    echo "   IF CAN REPRODUCE:"
+    echo "   a) Create detailed implementation plan"
+    echo "   b) Apply 'need-human' label:"
+    echo "      gh issue edit $issue_number --add-label 'need-human' --repo $repo"
+    echo ""
+    echo "   c) Add plan as comment for human review:"
+    echo "      gh issue comment $issue_number --repo $repo --body 'plan'"
+    echo ""
+    echo "4. PROVIDE SUMMARY of actions taken and next steps"
+    echo ""
+    print_color $YELLOW "⚡ Repository: $repo"
+    print_color $YELLOW "⚡ Issue URL: https://github.com/$repo/issues/$issue_number"
+    echo ""
+    
+    # Output issue details for Claude to process
+    echo "=== ISSUE CONTENT FOR ANALYSIS ==="
+    echo "$issue_json"
+    echo "==================================="
+}
+
+# Execute main function
+main "$@"

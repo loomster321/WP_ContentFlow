@@ -41,15 +41,18 @@ class WP_Content_Flow_REST_API {
      * Constructor
      */
     public function __construct() {
+        error_log('WP Content Flow REST API: Constructor called');
         $this->init_hooks();
+        error_log('WP Content Flow REST API: Hooks initialized');
     }
     
     /**
      * Initialize WordPress hooks
      */
     private function init_hooks() {
-        add_action( 'rest_api_init', array( $this, 'register_rest_routes' ) );
-        add_action( 'rest_api_init', array( $this, 'add_cors_headers' ) );
+        error_log('WP Content Flow REST API: Adding rest_api_init hook');
+        add_action( 'rest_api_init', array( $this, 'register_rest_routes' ), 10 );
+        add_action( 'rest_api_init', array( $this, 'add_cors_headers' ), 10 );
         
         // Add custom REST API error handling
         add_filter( 'rest_request_before_callbacks', array( $this, 'validate_rest_request' ), 10, 3 );
@@ -59,12 +62,23 @@ class WP_Content_Flow_REST_API {
      * Register all REST routes
      */
     public function register_rest_routes() {
+        error_log('WP Content Flow REST API: register_rest_routes called');
+        
         // Load and register controllers
         $this->load_controllers();
         $this->register_controllers();
         
         // Register custom endpoints
         $this->register_custom_endpoints();
+        
+        // Register a test endpoint to verify API is working
+        register_rest_route( $this->namespace, '/test', array(
+            'methods' => 'GET',
+            'callback' => array( $this, 'test_endpoint' ),
+            'permission_callback' => '__return_true'
+        ) );
+        
+        error_log('WP Content Flow REST API: Routes registered for namespace: ' . $this->namespace);
     }
     
     /**
@@ -75,7 +89,8 @@ class WP_Content_Flow_REST_API {
             'workflows' => 'includes/api/class-workflows-controller.php',
             'ai' => 'includes/api/class-ai-controller.php',
             'suggestions' => 'includes/api/class-suggestions-controller.php',
-            'history' => 'includes/api/class-history-controller.php'
+            'history' => 'includes/api/class-history-controller.php',
+            'settings' => 'includes/api/class-settings-controller.php'
         );
         
         foreach ( $controllers as $controller_name => $controller_file ) {
@@ -294,5 +309,21 @@ class WP_Content_Flow_REST_API {
      */
     public function get_version() {
         return $this->version;
+    }
+    
+    /**
+     * Test endpoint callback
+     *
+     * @param WP_REST_Request $request Request object
+     * @return WP_REST_Response Response object
+     */
+    public function test_endpoint( $request ) {
+        return new WP_REST_Response( array(
+            'success' => true,
+            'message' => 'WP Content Flow REST API is working!',
+            'namespace' => $this->namespace,
+            'version' => $this->version,
+            'timestamp' => current_time('mysql')
+        ), 200 );
     }
 }

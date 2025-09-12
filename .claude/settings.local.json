@@ -7,7 +7,9 @@
       "Bash(docker compose:*)",
       "Bash(npm:*)",
       "Bash(node:*)",
-      "Read(//home/timl/.npm/_logs/**)"
+      "Read(//home/timl/.npm/_logs/**)",
+      "Bash(gh repo view:*)",
+      "Bash(gh label:*)"
     ],
     "deny": [],
     "ask": []
