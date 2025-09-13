@@ -6,7 +6,7 @@
  */
 
 import { registerBlockType } from '@wordpress/blocks';
-import { useBlockProps, InspectorControls, BlockControls } from '@wordpress/block-editor';
+import { useBlockProps, InspectorControls, BlockControls, RichText } from '@wordpress/block-editor';
 import { 
     PanelBody, 
     TextareaControl, 
@@ -44,6 +44,8 @@ const AI_TEXT_BLOCK_CONTRACT = {
     attributes: {
         content: {
             type: 'string',
+            source: 'html',
+            selector: '.wp-content-flow-ai-generated-content',
             default: ''
         },
         workflowId: {
@@ -54,10 +56,7 @@ const AI_TEXT_BLOCK_CONTRACT = {
             type: 'string',
             default: ''
         },
-        isGenerating: {
-            type: 'boolean',
-            default: false
-        },
+        // isGenerating removed - UI state only, not saved
         lastGenerated: {
             type: 'string',
             default: ''
@@ -75,7 +74,8 @@ const AI_TEXT_BLOCK_CONTRACT = {
  * Block Edit Component
  */
 function EditComponent( { attributes, setAttributes, isSelected } ) {
-    const { content, workflowId, prompt, isGenerating, confidence } = attributes;
+    const { content, workflowId, prompt, confidence } = attributes;
+    const [ isGenerating, setIsGenerating ] = useState( false );
     const [ error, setError ] = useState( '' );
     const [ validationErrors, setValidationErrors ] = useState( {} );
     
@@ -111,7 +111,7 @@ function EditComponent( { attributes, setAttributes, isSelected } ) {
             return;
         }
         
-        setAttributes( { isGenerating: true } );
+        setIsGenerating( true );
         setError( '' );
         
         try {
@@ -136,9 +136,9 @@ function EditComponent( { attributes, setAttributes, isSelected } ) {
             setAttributes( {
                 content: response.suggested_content,
                 confidence: response.confidence_score,
-                lastGenerated: new Date().toISOString(),
-                isGenerating: false
+                lastGenerated: new Date().toISOString()
             } );
+            setIsGenerating( false );
             
             createNotice( 'success', __( 'AI content generated successfully!', 'wp-content-flow' ), {
                 type: 'snackbar',
@@ -155,7 +155,7 @@ function EditComponent( { attributes, setAttributes, isSelected } ) {
             }
             
             setError( errorMessage );
-            setAttributes( { isGenerating: false } );
+            setIsGenerating( false );
         }
     };
     
@@ -176,7 +176,7 @@ function EditComponent( { attributes, setAttributes, isSelected } ) {
             return;
         }
         
-        setAttributes( { isGenerating: true } );
+        setIsGenerating( true );
         setError( '' );
         
         try {
@@ -198,8 +198,7 @@ function EditComponent( { attributes, setAttributes, isSelected } ) {
                 setAttributes( {
                     content: response[0].suggested_content,
                     confidence: response[0].confidence_score,
-                    isGenerating: false
-                } );
+                    } );
                 
                 createNotice( 'success', __( 'Content improved successfully!', 'wp-content-flow' ), {
                     type: 'snackbar',
@@ -306,12 +305,12 @@ function EditComponent( { attributes, setAttributes, isSelected } ) {
                     <>
                         { content ? (
                             <div className="wp-content-flow-generated-content">
-                                <div 
+                                <RichText
                                     className="content-display"
-                                    contentEditable={ true }
-                                    suppressContentEditableWarning={ true }
-                                    onBlur={ ( e ) => setAttributes( { content: e.target.textContent } ) }
-                                    dangerouslySetInnerHTML={ { __html: content } }
+                                    tagName="div"
+                                    value={ content }
+                                    onChange={ ( value ) => setAttributes( { content: value } ) }
+                                    placeholder={ __( 'Generated content will appear here...', 'wp-content-flow' ) }
                                 />
                                 { confidence > 0 && (
                                     <div className="confidence-indicator">
@@ -355,17 +354,93 @@ function SaveComponent( { attributes } ) {
     return (
         <div { ...blockProps }>
             { content && (
-                <div 
+                <RichText.Content
                     className="wp-content-flow-ai-generated-content"
-                    dangerouslySetInnerHTML={ { __html: content } }
+                    tagName="div"
+                    value={ content }
                 />
             ) }
         </div>
     );
 }
 
-// Register the block
-registerBlockType( AI_TEXT_BLOCK_CONTRACT.name, AI_TEXT_BLOCK_CONTRACT );
+// Add error boundary wrapper for the edit component
+function EditWithErrorBoundary( props ) {
+    try {
+        return <EditComponent { ...props } />;
+    } catch ( error ) {
+        console.error( 'AI Text Generator Block Error:', error );
+        return (
+            <div { ...useBlockProps() }>
+                <div className="wp-content-flow-block-error">
+                    <p>{ __( 'This block encountered an error. Please refresh the page or recreate the block.', 'wp-content-flow' ) }</p>
+                </div>
+            </div>
+        );
+    }
+}
+
+// Add block deprecation for backward compatibility
+const deprecated = [
+    {
+        attributes: {
+            content: {
+                type: 'string',
+                default: ''
+            },
+            workflowId: {
+                type: 'number',
+                default: 0
+            },
+            prompt: {
+                type: 'string',
+                default: ''
+            },
+            isGenerating: {
+                type: 'boolean',
+                default: false
+            },
+            lastGenerated: {
+                type: 'string',
+                default: ''
+            },
+            confidence: {
+                type: 'number',
+                default: 0
+            }
+        },
+        save( { attributes } ) {
+            const { content } = attributes;
+            const blockProps = useBlockProps.save();
+            
+            return (
+                <div { ...blockProps }>
+                    { content && (
+                        <div 
+                            className="wp-content-flow-ai-generated-content"
+                            dangerouslySetInnerHTML={ { __html: content } }
+                        />
+                    ) }
+                </div>
+            );
+        },
+        migrate( attributes ) {
+            // Migrate old format to new RichText format
+            return {
+                ...attributes,
+                // Remove isGenerating from saved attributes
+                isGenerating: undefined
+            };
+        }
+    }
+];
+
+// Register the block with error boundary and deprecation
+registerBlockType( AI_TEXT_BLOCK_CONTRACT.name, {
+    ...AI_TEXT_BLOCK_CONTRACT,
+    edit: EditWithErrorBoundary,
+    deprecated
+} );
 
 // Export for testing
 export { AI_TEXT_BLOCK_CONTRACT, EditComponent, SaveComponent };

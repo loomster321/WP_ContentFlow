@@ -1,0 +1,9 @@
+{
+  "issue": "5",
+  "passed": false,
+  "error": "500 Internal Server Error - Issue reproduced",
+  "screenshots": [
+    "/home/timl/dev/WP_ContentFlow/e2e/screenshots/issue-5-failure-1757702680879.png"
+  ],
+  "timestamp": "2025-09-12T18:44:39.234Z"
+}

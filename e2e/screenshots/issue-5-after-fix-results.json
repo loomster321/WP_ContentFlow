@@ -1,0 +1,14 @@
+{
+  "passed": false,
+  "error": "500 ERROR: 500 on http://localhost:8080/wp-json/wp/v2/posts/148?_locale=user",
+  "networkErrors": [
+    "500 ERROR: 500 on http://localhost:8080/wp-json/wp/v2/posts/148?_locale=user"
+  ],
+  "consoleErrors": [
+    "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+  ],
+  "screenshots": [
+    "/home/timl/dev/WP_ContentFlow/e2e/screenshots/issue-5-after-fix-editor.png",
+    "/home/timl/dev/WP_ContentFlow/e2e/screenshots/issue-5-after-fix-saved.png"
+  ]
+}
