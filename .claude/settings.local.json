@@ -9,7 +9,9 @@
       "Bash(node:*)",
       "Read(//home/timl/.npm/_logs/**)",
       "Bash(gh repo view:*)",
-      "Bash(gh label:*)"
+      "Bash(gh label:*)",
+      "Bash(gh issue view:*)",
+      "Bash(gh api:*)"
     ],
     "deny": [],
     "ask": []
