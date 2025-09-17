@@ -94,6 +94,9 @@ class WP_Content_Flow {
         register_uninstall_hook( __FILE__, array( 'WP_Content_Flow', 'uninstall' ) );
         
         add_action( 'init', array( $this, 'init' ) );
+        add_action( 'init', array( $this, 'register_blocks' ), 20 );
+        add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_block_editor_assets' ) );
+        add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_frontend_assets' ) );
         add_action( 'plugins_loaded', array( $this, 'load_textdomain' ) );
     }
     
@@ -162,50 +165,50 @@ class WP_Content_Flow {
      */
     private function init_components() {
         // Core components temporarily disabled for debugging
-        // try {
-        //     // Initialize AI Core service
-        //     require_once WP_CONTENT_FLOW_PLUGIN_DIR . 'includes/class-ai-core.php';
-        //     if ( class_exists( 'WP_Content_Flow_AI_Core' ) ) {
-        //         WP_Content_Flow_AI_Core::init();
-        //     }
-        //     
-        //     // Initialize core components with error handling
-        //     if ( class_exists( 'WP_Content_Flow_Workflow_Engine' ) ) {
-        //         WP_Content_Flow_Workflow_Engine::get_instance();
-        //     }
-        //     if ( class_exists( 'WP_Content_Flow_Workflow_Automation_Engine' ) ) {
-        //         WP_Content_Flow_Workflow_Automation_Engine::get_instance();
-        //     }
-        //     if ( class_exists( 'WP_Content_Flow_Collaboration_Manager' ) ) {
-        //         WP_Content_Flow_Collaboration_Manager::get_instance();
-        //     }
-        //     if ( class_exists( 'WP_Content_Flow_Audit_Trail' ) ) {
-        //         WP_Content_Flow_Audit_Trail::get_instance();
-        //     }
-        //     if ( class_exists( 'WP_Content_Flow_User_Capabilities' ) ) {
-        //         new WP_Content_Flow_User_Capabilities();
-        //     }
-        //     if ( class_exists( 'WP_Content_Flow_Content_Manager' ) ) {
-        //         WP_Content_Flow_Content_Manager::get_instance();
-        //     }
-        // } catch ( Exception $e ) {
-        //     error_log( 'WP Content Flow initialization error: ' . $e->getMessage() );
-        // }
+        try {
+            // Initialize AI Core service
+            require_once WP_CONTENT_FLOW_PLUGIN_DIR . 'includes/class-ai-core.php';
+            if ( class_exists( 'WP_Content_Flow_AI_Core' ) ) {
+                WP_Content_Flow_AI_Core::init();
+            }
+            
+            // Initialize core components with error handling
+            if ( class_exists( 'WP_Content_Flow_Workflow_Engine' ) ) {
+                WP_Content_Flow_Workflow_Engine::get_instance();
+            }
+            if ( class_exists( 'WP_Content_Flow_Workflow_Automation_Engine' ) ) {
+                WP_Content_Flow_Workflow_Automation_Engine::get_instance();
+            }
+            if ( class_exists( 'WP_Content_Flow_Collaboration_Manager' ) ) {
+                WP_Content_Flow_Collaboration_Manager::get_instance();
+            }
+            if ( class_exists( 'WP_Content_Flow_Audit_Trail' ) ) {
+                WP_Content_Flow_Audit_Trail::get_instance();
+            }
+            if ( class_exists( 'WP_Content_Flow_User_Capabilities' ) ) {
+                new WP_Content_Flow_User_Capabilities();
+            }
+            if ( class_exists( 'WP_Content_Flow_Content_Manager' ) ) {
+                WP_Content_Flow_Content_Manager::get_instance();
+            }
+        } catch ( Exception $e ) {
+            error_log( 'WP Content Flow initialization error: ' . $e->getMessage() );
+        }
         
         // AI providers temporarily disabled for debugging
-        // try {
-        //     if ( class_exists( 'WP_Content_Flow_OpenAI_Provider' ) ) {
-        //         new WP_Content_Flow_OpenAI_Provider();
-        //     }
-        //     if ( class_exists( 'WP_Content_Flow_Anthropic_Provider' ) ) {
-        //         new WP_Content_Flow_Anthropic_Provider();
-        //     }
-        //     if ( class_exists( 'WP_Content_Flow_Google_AI_Provider' ) ) {
-        //         new WP_Content_Flow_Google_AI_Provider();
-        //     }
-        // } catch ( Exception $e ) {
-        //     error_log( 'WP Content Flow provider initialization error: ' . $e->getMessage() );
-        // }
+        try {
+            if ( class_exists( 'WP_Content_Flow_OpenAI_Provider' ) ) {
+                new WP_Content_Flow_OpenAI_Provider();
+            }
+            if ( class_exists( 'WP_Content_Flow_Anthropic_Provider' ) ) {
+                new WP_Content_Flow_Anthropic_Provider();
+            }
+            if ( class_exists( 'WP_Content_Flow_Google_AI_Provider' ) ) {
+                new WP_Content_Flow_Google_AI_Provider();
+            }
+        } catch ( Exception $e ) {
+            error_log( 'WP Content Flow provider initialization error: ' . $e->getMessage() );
+        }
         
         // Initialize REST API
         if ( class_exists( 'WP_Content_Flow_REST_API' ) ) {
@@ -213,18 +216,15 @@ class WP_Content_Flow {
         }
         
         // Initialize admin components - temporarily disabled for debugging
-        // if ( is_admin() && class_exists( 'WP_Content_Flow_Admin_Menu' ) ) {
-        //     try {
-        //         WP_Content_Flow_Admin_Menu::get_instance();
-        //     } catch ( Exception $e ) {
-        //         error_log( 'WP Content Flow admin initialization error: ' . $e->getMessage() );
-        //     }
-        // }
+        if ( is_admin() && class_exists( 'WP_Content_Flow_Admin_Menu' ) ) {
+            try {
+                WP_Content_Flow_Admin_Menu::get_instance();
+            } catch ( Exception $e ) {
+                error_log( 'WP Content Flow admin initialization error: ' . $e->getMessage() );
+            }
+        }
         
         // Initialize block editor components
-        add_action( 'init', array( $this, 'register_blocks' ) );
-        add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_block_editor_assets' ) );
-        add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_frontend_assets' ) );
         
         // Schedule cleanup tasks
         if ( ! wp_next_scheduled( 'wp_content_flow_cleanup' ) ) {
@@ -305,37 +305,37 @@ class WP_Content_Flow {
         // This will help identify if the custom JavaScript is breaking the block editor
         
         // Load main blocks dependencies - this includes all blocks and sidebar panels
-        // $main_blocks_asset = include( WP_CONTENT_FLOW_PLUGIN_DIR . 'build/blocks.asset.php' );
+        $main_blocks_asset = include( WP_CONTENT_FLOW_PLUGIN_DIR . 'build/blocks.asset.php' );
         
         // Enqueue the main blocks script (includes AI text generator block and sidebar panels)
-        // wp_enqueue_script(
-        //     'wp-content-flow-blocks',
-        //     WP_CONTENT_FLOW_PLUGIN_URL . 'build/blocks.js',
-        //     $main_blocks_asset['dependencies'],
-        //     $main_blocks_asset['version'],
-        //     true
-        // );
+        wp_enqueue_script(
+            'wp-content-flow-blocks',
+            WP_CONTENT_FLOW_PLUGIN_URL . 'build/blocks.js',
+            $main_blocks_asset['dependencies'],
+            $main_blocks_asset['version'],
+            true
+        );
         
-        // wp_enqueue_style(
-        //     'wp-content-flow-editor',
-        //     WP_CONTENT_FLOW_PLUGIN_URL . 'assets/css/editor.css',
-        //     array(),
-        //     WP_CONTENT_FLOW_VERSION
-        // );
+        wp_enqueue_style(
+            'wp-content-flow-editor',
+            WP_CONTENT_FLOW_PLUGIN_URL . 'assets/css/editor.css',
+            array(),
+            WP_CONTENT_FLOW_VERSION
+        );
         
         // Localize script with API data for both scripts
-        // $localize_data = array(
-        //     'apiUrl' => rest_url( 'wp-content-flow/v1/' ),
-        //     'nonce' => wp_create_nonce( 'wp_rest' ),
-        //     'version' => WP_CONTENT_FLOW_VERSION,
-        //     'defaultWorkflows' => $this->get_default_workflows_for_js(),
-        // );
+        $localize_data = array(
+            'apiUrl' => rest_url( 'wp-content-flow/v1/' ),
+            'nonce' => wp_create_nonce( 'wp_rest' ),
+            'version' => WP_CONTENT_FLOW_VERSION,
+            'defaultWorkflows' => $this->get_default_workflows_for_js(),
+        );
         
-        // wp_localize_script( 'wp-content-flow-blocks', 'wpContentFlow', $localize_data );
-        // wp_localize_script( 'wp-content-flow-ai-text-block', 'wpContentFlow', $localize_data );
+        wp_localize_script( 'wp-content-flow-blocks', 'wpContentFlow', $localize_data );
+        wp_localize_script( 'wp-content-flow-ai-text-block', 'wpContentFlow', $localize_data );
         
         // Register workflow data store
-        // wp_add_inline_script( 'wp-content-flow-blocks', $this->get_workflow_store_script(), 'before' );
+        wp_add_inline_script( 'wp-content-flow-blocks', $this->get_workflow_store_script(), 'before' );
     }
     
     /**

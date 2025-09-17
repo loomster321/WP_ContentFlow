@@ -557,4 +557,88 @@ class WP_Content_Flow_Hooks_Filters {
             )
         );
     }
+    /**
+     * Pre-improve content filter
+     */
+    public function pre_improve_content_filter( $should_improve, $content, $prompt, $workflow_id ) {
+        // Allow other plugins to prevent content improvement
+        if ( ! $should_improve ) {
+            return false;
+        }
+
+        // Check if content is suitable for improvement
+        if ( empty( $content ) || strlen( $content ) < 10 ) {
+            return false;
+        }
+
+        // Check for blacklisted terms in content or prompt
+        $blacklisted_terms = apply_filters( 'wp_content_flow_blacklisted_terms', array() );
+
+        foreach ( $blacklisted_terms as $term ) {
+            if ( stripos( $content, $term ) !== false || stripos( $prompt, $term ) !== false ) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Post content improvement action
+     */
+    public function post_improve_content_action( $improved_content, $original_content, $prompt, $workflow_id, $metadata ) {
+        // Update usage statistics
+        $this->update_usage_stats( 'improve', $workflow_id );
+
+        // Trigger third-party integrations
+        do_action( 'wp_content_flow_after_improvement', $improved_content, $original_content, $prompt, $workflow_id, $metadata );
+    }
+
+    /**
+     * Filter improved content
+     */
+    public function filter_improved_content( $content, $original_content, $prompt, $workflow_id ) {
+        // Apply content transformations
+        $content = $this->apply_content_transformations( $content );
+
+        // Apply formatting
+        $content = $this->apply_content_formatting( $content );
+
+        // Ensure we don't lose important content from original
+        $content = $this->preserve_critical_content( $content, $original_content );
+
+        return $content;
+    }
+
+    /**
+     * Log content improvement
+     */
+    public function log_content_improvement( $improved_content, $original_content, $prompt, $workflow_id, $metadata ) {
+        if ( ! $this->should_log_activity() ) {
+            return;
+        }
+
+        $log_entry = array(
+            'action' => 'content_improved',
+            'user_id' => get_current_user_id(),
+            'workflow_id' => $workflow_id,
+            'prompt_length' => strlen( $prompt ),
+            'original_length' => strlen( $original_content ),
+            'improved_length' => strlen( $improved_content ),
+            'improvement_ratio' => strlen( $improved_content ) / max( strlen( $original_content ), 1 ),
+            'timestamp' => current_time( 'mysql' ),
+            'metadata' => $metadata
+        );
+
+        $this->write_activity_log( $log_entry );
+    }
+
+    /**
+     * Preserve critical content during improvement
+     */
+    private function preserve_critical_content( $improved_content, $original_content ) {
+        // This method can be enhanced to preserve important elements
+        // For now, just return the improved content
+        return $improved_content;
+    }
 }

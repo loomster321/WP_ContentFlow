@@ -552,6 +552,37 @@ class WP_Content_Flow_Workflow_Automation_Engine {
     }
     
     /**
+     * Handle post updated trigger
+     *
+     * @param int $post_id Post ID
+     * @param WP_Post $post_after Post object after the update
+     * @param WP_Post $post_before Post object before the update
+     */
+    public function handle_post_updated( $post_id, $post_after, $post_before ) {
+        // Skip if this is not a real update (no changes)
+        if ( $post_after->post_modified === $post_before->post_modified ) {
+            return;
+        }
+
+        // Skip auto-drafts and revisions
+        if ( in_array( $post_after->post_type, [ 'revision', 'nav_menu_item' ] ) ) {
+            return;
+        }
+
+        if ( in_array( $post_after->post_status, [ 'auto-draft', 'trash' ] ) ) {
+            return;
+        }
+
+        // Log the post update
+        if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+            error_log( sprintf( 'WP Content Flow: Post updated - ID: %d, Type: %s, Status: %s', $post_id, $post_after->post_type, $post_after->post_status ) );
+        }
+
+        // For now, just log that the trigger was called successfully
+        // Actual workflow execution can be implemented later when needed
+    }
+
+    /**
      * Get workflow execution data
      *
      * @param int $workflow_id Workflow ID
@@ -1058,5 +1089,179 @@ class WP_Content_Flow_Workflow_Automation_Engine {
      */
     public function get_workflow_triggers() {
         return $this->workflow_hooks;
+    }
+
+    /**
+     * Handle workflow step completed
+     *
+     * @param int $step_id Step ID
+     * @param int $workflow_id Workflow ID
+     * @param array $context Context data
+     */
+    public function handle_workflow_step_completed( $step_id, $workflow_id, $context ) {
+        if ( ! $workflow_id || ! $step_id ) {
+            return;
+        }
+
+        // Log step completion
+        error_log( 'WP Content Flow: Workflow step completed - Step: ' . $step_id . ', Workflow: ' . $workflow_id );
+
+        // Get workflow configuration
+        $workflow_config = $this->get_workflow_config( $workflow_id );
+        if ( ! $workflow_config ) {
+            return;
+        }
+
+        // Check if there are next steps to trigger
+        $this->trigger_next_workflow_step( $workflow_id, $step_id, $context );
+
+        // Fire action for extensibility
+        do_action( 'wp_content_flow_after_workflow_step_completed', $step_id, $workflow_id, $context );
+    }
+
+    /**
+     * Handle content generated
+     *
+     * @param string $content Generated content
+     * @param array $metadata Generation metadata
+     */
+    public function handle_content_generated( $content, $metadata ) {
+        if ( empty( $content ) ) {
+            return;
+        }
+
+        // Log content generation
+        error_log( 'WP Content Flow: Content generated - Length: ' . strlen( $content ) );
+
+        // Update usage statistics
+        $this->update_generation_stats( $metadata );
+
+        // Check for automatic workflow triggers based on content generation
+        $this->check_content_generation_triggers( $content, $metadata );
+
+        // Fire action for extensibility
+        do_action( 'wp_content_flow_after_content_generated', $content, $metadata );
+    }
+
+    /**
+     * Execute scheduled workflow
+     *
+     * @param int $workflow_id Workflow ID
+     * @param array $args Workflow arguments
+     */
+    public function execute_scheduled_workflow( $workflow_id, $args = array() ) {
+        if ( ! $workflow_id ) {
+            return;
+        }
+
+        // Log scheduled execution
+        error_log( 'WP Content Flow: Executing scheduled workflow - ID: ' . $workflow_id );
+
+        // Get workflow configuration
+        $workflow_config = $this->get_workflow_config( $workflow_id );
+        if ( ! $workflow_config ) {
+            error_log( 'WP Content Flow: Scheduled workflow not found - ID: ' . $workflow_id );
+            return;
+        }
+
+        // Check if workflow is active
+        if ( empty( $workflow_config['status'] ) || $workflow_config['status'] !== 'active' ) {
+            error_log( 'WP Content Flow: Scheduled workflow not active - ID: ' . $workflow_id );
+            return;
+        }
+
+        // Execute the workflow
+        try {
+            $result = $this->execute_workflow( $workflow_id, $args );
+            error_log( 'WP Content Flow: Scheduled workflow executed successfully - ID: ' . $workflow_id );
+        } catch ( Exception $e ) {
+            error_log( 'WP Content Flow: Scheduled workflow execution failed - ID: ' . $workflow_id . ', Error: ' . $e->getMessage() );
+        }
+
+        // Fire action for extensibility
+        do_action( 'wp_content_flow_after_scheduled_workflow', $workflow_id, $args );
+    }
+
+    /**
+     * Trigger next workflow step
+     */
+    private function trigger_next_workflow_step( $workflow_id, $completed_step_id, $context ) {
+        // Get workflow steps
+        $workflow_config = $this->get_workflow_config( $workflow_id );
+        if ( ! isset( $workflow_config['steps'] ) || ! is_array( $workflow_config['steps'] ) ) {
+            return;
+        }
+
+        // Find next step after completed step
+        $found_current = false;
+        foreach ( $workflow_config['steps'] as $step ) {
+            if ( $found_current ) {
+                // This is the next step to execute
+                $this->execute_workflow_step( $step['id'], $workflow_id, $context );
+                break;
+            }
+            if ( $step['id'] == $completed_step_id ) {
+                $found_current = true;
+            }
+        }
+    }
+
+    /**
+     * Check for content generation triggers
+     */
+    private function check_content_generation_triggers( $content, $metadata ) {
+        // Check if any workflows should be triggered based on content generation
+        $active_workflows = $this->get_active_workflows();
+
+        foreach ( $active_workflows as $workflow ) {
+            if ( empty( $workflow['triggers'] ) ) {
+                continue;
+            }
+
+            foreach ( $workflow['triggers'] as $trigger ) {
+                if ( $trigger['type'] === 'content_generated' ) {
+                    // Check trigger conditions
+                    if ( $this->check_trigger_conditions( $trigger, $content, $metadata ) ) {
+                        $this->execute_workflow( $workflow['id'], array(
+                            'content' => $content,
+                            'metadata' => $metadata
+                        ) );
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Update generation statistics
+     */
+    private function update_generation_stats( $metadata ) {
+        $stats_key = 'wp_content_flow_generation_stats';
+        $stats = get_option( $stats_key, array() );
+
+        $today = current_time( 'Y-m-d' );
+
+        if ( ! isset( $stats[ $today ] ) ) {
+            $stats[ $today ] = array(
+                'total_generations' => 0,
+                'total_characters' => 0,
+                'by_provider' => array()
+            );
+        }
+
+        $stats[ $today ]['total_generations']++;
+
+        if ( isset( $metadata['content_length'] ) ) {
+            $stats[ $today ]['total_characters'] += $metadata['content_length'];
+        }
+
+        if ( isset( $metadata['provider'] ) ) {
+            if ( ! isset( $stats[ $today ]['by_provider'][ $metadata['provider'] ] ) ) {
+                $stats[ $today ]['by_provider'][ $metadata['provider'] ] = 0;
+            }
+            $stats[ $today ]['by_provider'][ $metadata['provider'] ]++;
+        }
+
+        update_option( $stats_key, $stats );
     }
 }

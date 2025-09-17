@@ -381,59 +381,9 @@ function EditWithErrorBoundary( props ) {
 }
 
 // Add block deprecation for backward compatibility
-const deprecated = [
-    {
-        attributes: {
-            content: {
-                type: 'string',
-                default: ''
-            },
-            workflowId: {
-                type: 'number',
-                default: 0
-            },
-            prompt: {
-                type: 'string',
-                default: ''
-            },
-            isGenerating: {
-                type: 'boolean',
-                default: false
-            },
-            lastGenerated: {
-                type: 'string',
-                default: ''
-            },
-            confidence: {
-                type: 'number',
-                default: 0
-            }
-        },
-        save( { attributes } ) {
-            const { content } = attributes;
-            const blockProps = useBlockProps.save();
-            
-            return (
-                <div { ...blockProps }>
-                    { content && (
-                        <div 
-                            className="wp-content-flow-ai-generated-content"
-                            dangerouslySetInnerHTML={ { __html: content } }
-                        />
-                    ) }
-                </div>
-            );
-        },
-        migrate( attributes ) {
-            // Migrate old format to new RichText format
-            return {
-                ...attributes,
-                // Remove isGenerating from saved attributes
-                isGenerating: undefined
-            };
-        }
-    }
-];
+// Block deprecation removed - the dangerouslySetInnerHTML pattern was causing 500 errors
+// All blocks now use the RichText.Content save format
+const deprecated = [];
 
 // Register the block with error boundary and deprecation
 registerBlockType( AI_TEXT_BLOCK_CONTRACT.name, {
